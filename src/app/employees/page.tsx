@@ -1,6 +1,9 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -58,9 +61,8 @@ export interface Employee {
   lastActivity: string
 }
 
-const initialEmployees: Employee[] = [
+const sampleEmployees = [
     {
-    id: "emp-001",
     name: "Jane Doe",
     email: "jane.doe@example.com",
     role: "Project Manager",
@@ -69,7 +71,6 @@ const initialEmployees: Employee[] = [
     lastActivity: "2 hours ago",
   },
   {
-    id: "emp-002",
     name: "John Smith",
     email: "john.smith@example.com",
     role: "Lead Developer",
@@ -78,7 +79,6 @@ const initialEmployees: Employee[] = [
     lastActivity: "5 hours ago",
   },
   {
-    id: "emp-003",
     name: "Peter Jones",
     email: "peter.jones@example.com",
     role: "UX Designer",
@@ -87,7 +87,6 @@ const initialEmployees: Employee[] = [
     lastActivity: "1 day ago",
   },
   {
-    id: "emp-004",
     name: "Olivia Martin",
     email: "olivia.martin@example.com",
     role: "Marketing Specialist",
@@ -96,7 +95,6 @@ const initialEmployees: Employee[] = [
     lastActivity: "15 minutes ago",
   },
     {
-    id: "emp-005",
     name: "Noah Brown",
     email: "noah.brown@example.com",
     role: "Intern",
@@ -106,77 +104,112 @@ const initialEmployees: Employee[] = [
   },
 ]
 
+const employeesCollectionRef = collection(db, "test0")
+
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees)
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-    null
-  )
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
-  
-  const handleAddEmployee = async (
-    newEmployeeData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
-  ) => {
-    const newEmployee: Employee = {
-        ...newEmployeeData,
-        id: `emp-${Math.random().toString(36).substr(2, 9)}`,
-        status: "Active",
-        avatar: "https://placehold.co/100x100.png",
-        lastActivity: 'Just now'
+  const [isLoading, setIsLoading] = useState(true)
+
+  const fetchEmployees = async () => {
+    setIsLoading(true)
+    try {
+      const querySnapshot = await getDocs(employeesCollectionRef)
+      if (querySnapshot.empty) {
+        // If the collection is empty, populate it with sample data
+        const batch = writeBatch(db)
+        sampleEmployees.forEach((employee) => {
+          const newDocRef = doc(employeesCollectionRef)
+          batch.set(newDocRef, employee)
+        })
+        await batch.commit()
+        // Fetch again after populating
+        const newQuerySnapshot = await getDocs(employeesCollectionRef)
+        const employeesData = newQuerySnapshot.docs.map((doc) => ({
+          ...doc.data(),
+          id: doc.id,
+        })) as Employee[]
+        setEmployees(employeesData)
+      } else {
+        const employeesData = querySnapshot.docs.map((doc) => ({
+          ...doc.data(),
+          id: doc.id,
+        })) as Employee[]
+        setEmployees(employeesData)
+      }
+    } catch (error) {
+      console.error("Error fetching employees:", error)
+      // Handle error appropriately, e.g., show a toast message
+    } finally {
+      setIsLoading(false)
     }
-    setEmployees(prev => [...prev, newEmployee]);
-    setIsAddOpen(false)
   }
 
-  const handleEditEmployee = async (
-    id: string,
-    updatedData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
-  ) => {
-    setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, ...updatedData } : emp));
-    setIsEditOpen(false)
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
+
+  const handleAddEmployee = async (newEmployeeData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">) => {
+    try {
+      const employeeToAdd = {
+        ...newEmployeeData,
+        status: "Active" as const,
+        avatar: `https://placehold.co/100x100.png`,
+        lastActivity: 'Just now',
+      }
+      await addDoc(employeesCollectionRef, employeeToAdd)
+      fetchEmployees()
+      setIsAddOpen(false)
+    } catch (error) {
+      console.error("Error adding employee:", error)
+    }
+  }
+
+  const handleEditEmployee = async (id: string, updatedData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">) => {
+    try {
+      const employeeDoc = doc(db, "test0", id)
+      await updateDoc(employeeDoc, updatedData)
+      fetchEmployees()
+      setIsEditOpen(false)
+    } catch (error) {
+      console.error("Error editing employee:", error)
+    }
   }
 
   const handleDeleteEmployee = async () => {
     if (!selectedEmployee) return
-    setEmployees(prev => prev.filter(emp => emp.id !== selectedEmployee.id));
-    setIsDeleteAlertOpen(false)
+    try {
+      const employeeDoc = doc(db, "test0", selectedEmployee.id)
+      await deleteDoc(employeeDoc)
+      fetchEmployees()
+      setIsDeleteAlertOpen(false)
+    } catch (error) {
+      console.error("Error deleting employee:", error)
+    }
   }
 
-  const handleSetStatus = async (
-    id: string,
-    status: "Active" | "On Leave" | "Inactive"
-  ) => {
-    setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, status } : emp));
+  const handleSetStatus = async (id: string, status: "Active" | "On Leave" | "Inactive") => {
+    try {
+      const employeeDoc = doc(db, "test0", id)
+      await updateDoc(employeeDoc, { status })
+      fetchEmployees()
+    } catch (error) {
+      console.error("Error updating status:", error)
+    }
   }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Active":
-        return (
-          <Badge
-            variant="default"
-            className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200"
-          >
-            {status}
-          </Badge>
-        )
+        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200">{status}</Badge>
       case "Inactive":
-        return (
-          <Badge
-            variant="destructive"
-            className="bg-red-100 text-red-800 border-red-200 hover:bg-red-200"
-          >
-            {status}
-          </Badge>
-        )
+        return <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200 hover:bg-red-200">{status}</Badge>
       case "On Leave":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200">
-            {status}
-          </Badge>
-        )
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200">{status}</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
@@ -194,9 +227,7 @@ export default function EmployeesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Employee Management</CardTitle>
-            <CardDescription>
-              View, manage, and track your team members.
-            </CardDescription>
+            <CardDescription>View, manage, and track your team members.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -212,7 +243,13 @@ export default function EmployeesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {employees.length > 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      Loading employees...
+                    </TableCell>
+                  </TableRow>
+                ) : employees.length > 0 ? (
                   employees.map((employee) => (
                     <TableRow key={employee.id}>
                       <TableCell>
@@ -242,7 +279,7 @@ export default function EmployeesPage() {
                       </TableCell>
                       <TableCell>{employee.role}</TableCell>
                       <TableCell>{getStatusBadge(employee.status)}</TableCell>
-                      <TableCell>{employee.lastActivity}</TableCell>
+                      <TableCell>{employee.lastActivity || 'N/A'}</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
