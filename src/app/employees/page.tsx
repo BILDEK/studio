@@ -67,7 +67,7 @@ const sampleEmployees = [
     name: "Jane Doe",
     email: "jane.doe@example.com",
     role: "Project Manager",
-    status: "Active",
+    status: "Active" as const,
     avatar: `https://placehold.co/100x100/A3E635/4D7C0F.png`,
     lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
   },
@@ -75,7 +75,7 @@ const sampleEmployees = [
     name: "John Smith",
     email: "john.smith@example.com",
     role: "Lead Developer",
-    status: "Active",
+    status: "Active" as const,
     avatar: `https://placehold.co/100x100/6EE7B7/047857.png`,
     lastActivity: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
   },
@@ -83,7 +83,7 @@ const sampleEmployees = [
     name: "Peter Jones",
     email: "peter.jones@example.com",
     role: "UX Designer",
-    status: "On Leave",
+    status: "On Leave" as const,
     avatar: `https://placehold.co/100x100/34D399/065F46.png`,
     lastActivity: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
   },
@@ -91,7 +91,7 @@ const sampleEmployees = [
     name: "Olivia Martin",
     email: "olivia.martin@example.com",
     role: "Marketing Specialist",
-    status: "Active",
+    status: "Active" as const,
     avatar: `https://placehold.co/100x100/A7F3D0/064E3B.png`,
     lastActivity: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
   },
@@ -99,7 +99,7 @@ const sampleEmployees = [
     name: "Noah Brown",
     email: "noah.brown@example.com",
     role: "Intern",
-    status: "Inactive",
+    status: "Inactive" as const,
     avatar: `https://placehold.co/100x100/86EFAC/14532D.png`,
     lastActivity: new Date(Date.now() - 3 * 7 * 24 * 60 * 60 * 1000), // 3 weeks ago
   },
@@ -125,7 +125,7 @@ export default function EmployeesPage() {
         const batch = writeBatch(db)
         sampleEmployees.forEach((employee) => {
           const newDocRef = doc(employeesCollectionRef)
-          batch.set(newDocRef, employee)
+          batch.set(newDocRef, { ...employee, lastActivity: Timestamp.fromDate(employee.lastActivity) })
         })
         await batch.commit()
         // Fetch again after populating
@@ -168,7 +168,7 @@ export default function EmployeesPage() {
         ...newEmployeeData,
         status: "Active" as const,
         avatar: `https://placehold.co/100x100.png`,
-        lastActivity: new Date(),
+        lastActivity: Timestamp.now(),
       }
       await addDoc(employeesCollectionRef, employeeToAdd)
       fetchEmployees()
