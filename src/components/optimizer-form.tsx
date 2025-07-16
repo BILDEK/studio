@@ -1,7 +1,7 @@
 "use client"
 
-import { getOptimizedWorkflow, type OptimizerActionState } from "@/lib/actions"
-import { useFormState, useFormStatus } from "react-dom"
+import { type OptimizerActionState } from "@/lib/actions"
+import { useFormStatus } from "react-dom"
 import { Button } from "./ui/button"
 import { Label } from "./ui/label"
 import { Textarea } from "./ui/textarea"
@@ -26,10 +26,12 @@ function SubmitButton() {
   )
 }
 
-export function OptimizerForm() {
-  const initialState: OptimizerActionState = {}
-  const [state, dispatch] = useFormState(getOptimizedWorkflow, initialState)
+interface OptimizerFormProps {
+  state: OptimizerActionState
+  dispatch: (payload: FormData) => void
+}
 
+export function OptimizerForm({ state, dispatch }: OptimizerFormProps) {
   return (
     <form action={dispatch} className="grid gap-6">
       <div className="grid gap-2">
@@ -37,7 +39,7 @@ export function OptimizerForm() {
         <Textarea
           id="workflowDescription"
           name="workflowDescription"
-          placeholder="Describe your current process from start to finish. For example: 'When a new order comes in, we manually check inventory, then create a shipping label, and finally email the customer with a tracking number.'"
+          placeholder="e.g., When a new customer order is received via email, our team manually enters the order details into a spreadsheet. We then check our physical inventory to confirm stock levels. After that, a shipping label is created using a third-party website, and we email the customer with the tracking number."
           rows={5}
           required
         />
@@ -52,7 +54,7 @@ export function OptimizerForm() {
         <Textarea
           id="businessGoals"
           name="businessGoals"
-          placeholder="What are the key objectives for this workflow? For example: 'Reduce shipping errors by 50% and decrease order processing time to under 2 hours.'"
+          placeholder="e.g., Our primary goal is to reduce order processing time to under 1 hour. We also want to decrease shipping errors by 50% and improve overall customer satisfaction by providing faster, more accurate updates."
           rows={3}
           required
         />
@@ -67,7 +69,7 @@ export function OptimizerForm() {
         <Textarea
           id="currentChallenges"
           name="currentChallenges"
-          placeholder="What are the main pain points or bottlenecks? For example: 'Inventory counts are often inaccurate, and manually creating emails is time-consuming and leads to typos.'"
+          placeholder="e.g., Manual data entry is time-consuming and often leads to typos in customer addresses. Our inventory counts are frequently inaccurate, causing delays. Crafting individual emails for tracking numbers is slow and repetitive."
           rows={3}
           required
         />
