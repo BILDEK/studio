@@ -98,7 +98,6 @@ export default function EmployeesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [isDeactivateAlertOpen, setIsDeactivateAlertOpen] = useState(false)
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
 
   const handleAddEmployee = (newEmployeeData: Omit<Employee, 'avatar' | 'status' | 'lastActivity'>) => {
@@ -126,34 +125,12 @@ export default function EmployeesPage() {
     setIsEditOpen(false)
   }
 
-  const handleDeactivateEmployee = () => {
-    if (!selectedEmployee) return;
-    setEmployees((prev) =>
-      prev.map((employee) =>
-        employee.email === selectedEmployee.email
-          ? { ...employee, status: "Inactive" }
-          : employee
-      )
-    );
-    setIsDeactivateAlertOpen(false)
-  };
-
   const handleDeleteEmployee = () => {
     if (!selectedEmployee) return;
     setEmployees((prev) =>
       prev.filter((employee) => employee.email !== selectedEmployee.email)
     );
     setIsDeleteAlertOpen(false)
-  };
-  
-  const handleActivateEmployee = (email: string) => {
-    setEmployees((prev) =>
-      prev.map((employee) =>
-        employee.email === email
-          ? { ...employee, status: "Active" }
-          : employee
-      )
-    );
   };
 
   const handleSetStatus = (email: string, status: string) => {
@@ -280,23 +257,6 @@ export default function EmployeesPage() {
                               </DropdownMenuPortal>
                             </DropdownMenuSub>
                             <DropdownMenuSeparator />
-                             {employee.status === "Inactive" ? (
-                              <DropdownMenuItem
-                                onClick={() => handleActivateEmployee(employee.email)}
-                              >
-                                Activate
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onSelect={() => {
-                                  setSelectedEmployee(employee)
-                                  setIsDeactivateAlertOpen(true)
-                                }}
-                              >
-                                Deactivate
-                              </DropdownMenuItem>
-                            )}
                             <DropdownMenuItem
                               className="text-destructive"
                               onSelect={() => {
@@ -341,22 +301,6 @@ export default function EmployeesPage() {
             isOpen={isDetailsOpen}
             onOpenChange={setIsDetailsOpen}
           />
-          <AlertDialog open={isDeactivateAlertOpen} onOpenChange={setIsDeactivateAlertOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will mark {selectedEmployee.name} as inactive.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeactivateEmployee}>
-                  Deactivate
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
           <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
