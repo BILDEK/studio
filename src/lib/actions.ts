@@ -11,17 +11,13 @@ import { z } from "zod"
 const ActionInputSchema = z.object({
   workflowDescription: z
     .string()
-    .describe('Detailed description of the existing workflow to be optimized.'),
+    .min(1, { message: "Workflow description cannot be empty." }),
   businessGoals: z
     .string()
-    .describe(
-      'Description of the overall business goals the workflow should achieve.'
-    ),
+    .min(1, { message: "Business goals cannot be empty." }),
   currentChallenges: z
     .string()
-    .describe(
-      'Description of the current challenges and bottlenecks in the workflow.'
-    ),
+    .min(1, { message: "Current challenges cannot be empty." }),
 })
 
 export type OptimizerActionState = {
