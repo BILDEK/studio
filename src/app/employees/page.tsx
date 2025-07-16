@@ -30,6 +30,7 @@ import {
 import { MoreHorizontal, PlusCircle } from "lucide-react"
 import { AddEmployeeForm } from "@/components/add-employee-form"
 import { EditEmployeeForm } from "@/components/edit-employee-form"
+import { EmployeeDetailsDialog } from "@/components/employee-details-dialog"
 
 const initialEmployees = [
   {
@@ -74,7 +75,7 @@ const initialEmployees = [
   },
 ]
 
-type Employee = (typeof initialEmployees)[0]
+export type Employee = (typeof initialEmployees)[0]
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState(initialEmployees)
@@ -194,7 +195,11 @@ export default function EmployeesPage() {
                               Edit
                             </DropdownMenuItem>
                           </EditEmployeeForm>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
+                          <EmployeeDetailsDialog employee={employee}>
+                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              View Details
+                            </DropdownMenuItem>
+                          </EmployeeDetailsDialog>
                           <DropdownMenuItem className="text-destructive">
                             Deactivate
                           </DropdownMenuItem>
