@@ -68,7 +68,7 @@ export interface Employee {
   avatar: string
   role: string
   status: "Active" | "On Leave" | "Inactive"
-  lastActivity: string | Timestamp
+  lastActivity: string | Timestamp | null
 }
 
 export default function EmployeesPage() {
@@ -84,7 +84,7 @@ export default function EmployeesPage() {
 
   const fetchEmployees = async () => {
     setIsLoading(true)
-    const q = query(collection(db, "test0"), orderBy("lastActivity", "desc"))
+    const q = query(collection(db, "test0")) // Removed sorting by non-existent field
     const querySnapshot = await getDocs(q)
     const employeesData = querySnapshot.docs.map((doc) => {
       const data = doc.data()
@@ -92,10 +92,10 @@ export default function EmployeesPage() {
         id: doc.id,
         name: data.name,
         email: data.email,
-        avatar: data.avatar,
+        avatar: data.avatar || `https://placehold.co/100x100.png`, // Add default avatar
         role: data.role,
         status: data.status,
-        lastActivity: data.lastActivity.toDate().toISOString(),
+        lastActivity: data.lastActivity ? data.lastActivity.toDate().toISOString() : null, // Handle null lastActivity
       }
     }) as Employee[]
     setEmployees(employeesData)
@@ -281,11 +281,11 @@ export default function EmployeesPage() {
                       <TableCell>{employee.role}</TableCell>
                       <TableCell>{getStatusBadge(employee.status)}</TableCell>
                       <TableCell>
-                        {new Date(
+                        {employee.lastActivity ? new Date(
                           typeof employee.lastActivity === "string"
                             ? employee.lastActivity
                             : (employee.lastActivity as Timestamp).toDate()
-                        ).toLocaleDateString()}
+                        ).toLocaleDateString() : 'N/A'}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
