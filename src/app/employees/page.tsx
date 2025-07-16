@@ -99,6 +99,7 @@ export default function EmployeesPage() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isDeactivateAlertOpen, setIsDeactivateAlertOpen] = useState(false)
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
 
   const handleAddEmployee = (newEmployeeData: Omit<Employee, 'avatar' | 'status' | 'lastActivity'>) => {
     const newEmployee: Employee = {
@@ -135,6 +136,14 @@ export default function EmployeesPage() {
       )
     );
     setIsDeactivateAlertOpen(false)
+  };
+
+  const handleDeleteEmployee = () => {
+    if (!selectedEmployee) return;
+    setEmployees((prev) =>
+      prev.filter((employee) => employee.email !== selectedEmployee.email)
+    );
+    setIsDeleteAlertOpen(false)
   };
   
   const handleActivateEmployee = (email: string) => {
@@ -288,6 +297,15 @@ export default function EmployeesPage() {
                                 Deactivate
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onSelect={() => {
+                                setSelectedEmployee(employee)
+                                setIsDeleteAlertOpen(true)
+                              }}
+                            >
+                              Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -335,6 +353,22 @@ export default function EmployeesPage() {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeactivateEmployee}>
                   Deactivate
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete {selectedEmployee.name}&apos;s account.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteEmployee} className="bg-destructive hover:bg-destructive/90">
+                  Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

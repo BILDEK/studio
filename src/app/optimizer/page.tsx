@@ -76,7 +76,19 @@ function OptimizerPageContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-             <OptimizerForm state={state} dispatch={dispatch} />
+             <OptimizerForm
+               state={state}
+               dispatch={dispatch}
+               exampleText={{
+                workflowDescription:
+                  "Our current workflow for order processing involves receiving an order, verifying payment, picking and packing the items, and then shipping the order. This is handled manually by our warehouse team.",
+                businessGoals:
+                  "We aim to increase the efficiency of our order fulfillment process, reduce shipping times, and improve overall customer satisfaction.",
+                currentChallenges:
+                  "We frequently experience delays in order processing due to manual handling, which leads to longer shipping times. We also see a high rate of returns, potentially due to incorrect orders or damaged goods during shipping.",
+              }}
+
+             />
           </CardContent>
         </Card>
       </div>
