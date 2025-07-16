@@ -28,12 +28,12 @@ function SubmitButton() {
 
 interface OptimizerFormProps {
   state: OptimizerActionState
-  dispatch: (payload: FormData) => void
+  formAction: (payload: FormData) => void
 }
 
-export function OptimizerForm({ state, dispatch }: OptimizerFormProps) {
+export function OptimizerForm({ state, formAction }: OptimizerFormProps) {
   return (
-    <form action={dispatch} className="grid gap-6">
+    <form action={formAction} className="grid gap-6">
       <div className="grid gap-2">
         <Label htmlFor="workflowDescription">Current Workflow</Label>
         <Textarea

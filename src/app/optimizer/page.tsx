@@ -1,7 +1,7 @@
 "use client"
 
 import { getOptimizedWorkflow, type OptimizerActionState } from "@/lib/actions"
-import { useFormState } from "react-dom"
+import { useActionState } from "react"
 import { AppLayout } from "@/components/app-layout"
 import {
   Card,
@@ -60,7 +60,7 @@ function OptimizerResult({ state }: { state: OptimizerActionState }) {
 
 function OptimizerPageContent() {
   const initialState: OptimizerActionState = {}
-  const [state, dispatch] = useFormState(getOptimizedWorkflow, initialState)
+  const [state, formAction] = useActionState(getOptimizedWorkflow, initialState)
 
   return (
     <div className="grid gap-8 lg:grid-cols-5">
@@ -78,16 +78,7 @@ function OptimizerPageContent() {
           <CardContent>
              <OptimizerForm
                state={state}
-               dispatch={dispatch}
-               exampleText={{
-                workflowDescription:
-                  "Our current workflow for order processing involves receiving an order, verifying payment, picking and packing the items, and then shipping the order. This is handled manually by our warehouse team.",
-                businessGoals:
-                  "We aim to increase the efficiency of our order fulfillment process, reduce shipping times, and improve overall customer satisfaction.",
-                currentChallenges:
-                  "We frequently experience delays in order processing due to manual handling, which leads to longer shipping times. We also see a high rate of returns, potentially due to incorrect orders or damaged goods during shipping.",
-              }}
-
+               formAction={formAction}
              />
           </CardContent>
         </Card>
