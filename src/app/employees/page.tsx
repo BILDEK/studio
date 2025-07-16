@@ -31,6 +31,17 @@ import { MoreHorizontal, PlusCircle } from "lucide-react"
 import { AddEmployeeForm } from "@/components/add-employee-form"
 import { EditEmployeeForm } from "@/components/edit-employee-form"
 import { EmployeeDetailsDialog } from "@/components/employee-details-dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const initialEmployees = [
   {
@@ -103,6 +114,15 @@ export default function EmployeesPage() {
     )
   }
 
+  const handleDeactivateEmployee = (email: string) => {
+    setEmployees((prev) =>
+      prev.map((employee) =>
+        employee.email === email
+          ? { ...employee, status: "Inactive" }
+          : employee
+      )
+    );
+  };
 
   return (
     <AppLayout>
@@ -158,11 +178,13 @@ export default function EmployeesPage() {
                         variant={
                           employee.status === "Active"
                             ? "default"
+                            : employee.status === "Inactive"
+                            ? "destructive"
                             : "secondary"
                         }
                         className={
                           employee.status === "Active"
-                            ? "bg-primary/20 text-primary border-primary/20 hover:bg-primary/30"
+                            ? "bg-primary/20 text-primary-foreground border-primary/20 hover:bg-primary/30"
                             : ""
                         }
                       >
@@ -173,38 +195,60 @@ export default function EmployeesPage() {
                       {new Date(employee.lastActivity).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                           <EditEmployeeForm
-                            employee={{
-                              name: employee.name,
-                              email: employee.email,
-                              role: employee.role,
-                              originalEmail: employee.email,
-                            }}
-                            onEditEmployee={handleEditEmployee}
-                          >
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                              Edit
-                            </DropdownMenuItem>
-                          </EditEmployeeForm>
-                          <EmployeeDetailsDialog employee={employee}>
-                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                              View Details
-                            </DropdownMenuItem>
-                          </EmployeeDetailsDialog>
-                          <DropdownMenuItem className="text-destructive">
-                            Deactivate
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <AlertDialog>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                             <EditEmployeeForm
+                              employee={{
+                                name: employee.name,
+                                email: employee.email,
+                                role: employee.role,
+                                originalEmail: employee.email,
+                              }}
+                              onEditEmployee={handleEditEmployee}
+                            >
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                Edit
+                              </DropdownMenuItem>
+                            </EditEmployeeForm>
+                            <EmployeeDetailsDialog employee={employee}>
+                               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                View Details
+                              </DropdownMenuItem>
+                            </EmployeeDetailsDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onSelect={(e) => e.preventDefault()}
+                                disabled={employee.status === 'Inactive'}
+                              >
+                                Deactivate
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                         <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will mark {employee.name} as inactive. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeactivateEmployee(employee.email)}>
+                                Deactivate
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))}
