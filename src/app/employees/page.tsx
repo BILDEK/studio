@@ -277,13 +277,15 @@ export default function EmployeesPage() {
                             />
                             <AvatarFallback>
                               {employee.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
+                                ? employee.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                : "???"}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-medium">{employee.name}</div>
+                            <div className="font-medium">{employee.name || 'N/A'}</div>
                             <div className="text-sm text-muted-foreground">
                               {employee.email}
                             </div>
