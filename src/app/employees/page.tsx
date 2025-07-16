@@ -1,15 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-} from "firebase/firestore"
-import { db } from "@/lib/firebase"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -56,7 +47,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Skeleton } from "@/components/ui/skeleton"
 
 export interface Employee {
   id: string
@@ -68,29 +58,56 @@ export interface Employee {
   lastActivity: string
 }
 
-const initialEmployees: Omit<Employee, "id" | "avatar" | "lastActivity">[] = [
-  {
+const initialEmployees: Employee[] = [
+    {
+    id: "emp-001",
     name: "Jane Doe",
     email: "jane.doe@example.com",
     role: "Project Manager",
     status: "Active",
+    avatar: `https://placehold.co/100x100/A3E635/4D7C0F.png`,
+    lastActivity: "2 hours ago",
   },
   {
+    id: "emp-002",
     name: "John Smith",
     email: "john.smith@example.com",
     role: "Lead Developer",
     status: "Active",
+    avatar: `https://placehold.co/100x100/6EE7B7/047857.png`,
+    lastActivity: "5 hours ago",
   },
   {
+    id: "emp-003",
     name: "Peter Jones",
     email: "peter.jones@example.com",
     role: "UX Designer",
     status: "On Leave",
+    avatar: `https://placehold.co/100x100/34D399/065F46.png`,
+    lastActivity: "1 day ago",
+  },
+  {
+    id: "emp-004",
+    name: "Olivia Martin",
+    email: "olivia.martin@example.com",
+    role: "Marketing Specialist",
+    status: "Active",
+    avatar: `https://placehold.co/100x100/A7F3D0/064E3B.png`,
+    lastActivity: "15 minutes ago",
+  },
+    {
+    id: "emp-005",
+    name: "Noah Brown",
+    email: "noah.brown@example.com",
+    role: "Intern",
+    status: "Inactive",
+    avatar: `https://placehold.co/100x100/86EFAC/14532D.png`,
+    lastActivity: "3 weeks ago",
   },
 ]
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>([])
+  const [employees, setEmployees] = useState<Employee[]>(initialEmployees)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
     null
   )
@@ -98,55 +115,18 @@ export default function EmployeesPage() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const employeesCollectionRef = collection(db, "test0")
-
-  const getEmployees = async () => {
-    setIsLoading(true)
-    try {
-      const data = await getDocs(employeesCollectionRef)
-
-      if (data.empty) {
-        // Seed the database if it's empty
-        for (const emp of initialEmployees) {
-          await addDoc(employeesCollectionRef, emp)
-        }
-        // Fetch again after seeding
-        const newData = await getDocs(employeesCollectionRef)
-        const fetchedEmployees = newData.docs.map((d) => ({
-          ...d.data(),
-          id: d.id,
-          avatar: `https://placehold.co/100x100.png`,
-          lastActivity: "Just now",
-        })) as Employee[]
-        setEmployees(fetchedEmployees)
-      } else {
-        const fetchedEmployees = data.docs.map((d) => ({
-          ...d.data(),
-          id: d.id,
-          avatar: `https://placehold.co/100x100.png`,
-          lastActivity: "1 day ago",
-        })) as Employee[]
-        setEmployees(fetchedEmployees)
-      }
-    } catch (error) {
-      console.error("Error fetching employees:", error)
-      // Set employees to an empty array in case of an error
-      setEmployees([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    getEmployees()
-  }, [])
-
+  
   const handleAddEmployee = async (
     newEmployeeData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
   ) => {
-    await addDoc(employeesCollectionRef, { ...newEmployeeData, status: "Active" })
-    getEmployees() // Refresh list
+    const newEmployee: Employee = {
+        ...newEmployeeData,
+        id: `emp-${Math.random().toString(36).substr(2, 9)}`,
+        status: "Active",
+        avatar: "https://placehold.co/100x100.png",
+        lastActivity: 'Just now'
+    }
+    setEmployees(prev => [...prev, newEmployee]);
     setIsAddOpen(false)
   }
 
@@ -154,17 +134,13 @@ export default function EmployeesPage() {
     id: string,
     updatedData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
   ) => {
-    const employeeDoc = doc(db, "test0", id)
-    await updateDoc(employeeDoc, updatedData)
-    getEmployees() // Refresh list
+    setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, ...updatedData } : emp));
     setIsEditOpen(false)
   }
 
   const handleDeleteEmployee = async () => {
     if (!selectedEmployee) return
-    const employeeDoc = doc(db, "test0", selectedEmployee.id)
-    await deleteDoc(employeeDoc)
-    getEmployees() // Refresh list
+    setEmployees(prev => prev.filter(emp => emp.id !== selectedEmployee.id));
     setIsDeleteAlertOpen(false)
   }
 
@@ -172,9 +148,7 @@ export default function EmployeesPage() {
     id: string,
     status: "Active" | "On Leave" | "Inactive"
   ) => {
-    const employeeDoc = doc(db, "test0", id)
-    await updateDoc(employeeDoc, { status })
-    getEmployees() // Refresh list
+    setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, status } : emp));
   }
 
   const getStatusBadge = (status: string) => {
@@ -238,33 +212,7 @@ export default function EmployeesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Skeleton className="h-9 w-9 rounded-full" />
-                          <div className="space-y-1">
-                            <Skeleton className="h-4 w-24" />
-                            <Skeleton className="h-3 w-32" />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-28" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-6 w-20 rounded-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-24" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-8" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : employees.length > 0 ? (
+                {employees.length > 0 ? (
                   employees.map((employee) => (
                     <TableRow key={employee.id}>
                       <TableCell>
