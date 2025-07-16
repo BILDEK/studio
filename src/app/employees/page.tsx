@@ -1,6 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  Timestamp,
+} from "firebase/firestore"
+import { db } from "@/lib/firebase"
+
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -46,102 +59,111 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Skeleton } from "@/components/ui/skeleton"
 
-const initialEmployees = [
-  {
-    name: "Olivia Martin",
-    email: "olivia.martin@example.com",
-    avatar: "https://placehold.co/100x100/A3E635/4D7C0F.png",
-    role: "Project Manager",
-    status: "Active",
-    lastActivity: "2024-07-29T10:30:00Z",
-  },
-  {
-    name: "Liam Johnson",
-    email: "liam.johnson@example.com",
-    avatar: "https://placehold.co/100x100/6EE7B7/047857.png",
-    role: "Lead Developer",
-    status: "Active",
-    lastActivity: "2024-07-29T11:05:00Z",
-  },
-  {
-    name: "Emma Williams",
-    email: "emma.williams@example.com",
-    avatar: "https://placehold.co/100x100/34D399/065F46.png",
-    role: "UX Designer",
-    status: "On Leave",
-    lastActivity: "2024-07-25T14:00:00Z",
-  },
-  {
-    name: "Noah Brown",
-    email: "noah.brown@example.com",
-    avatar: "https://placehold.co/100x100/A7F3D0/064E3B.png",
-    role: "Marketing Specialist",
-    status: "Active",
-    lastActivity: "2024-07-29T09:15:00Z",
-  },
-  {
-    name: "Ava Jones",
-    email: "ava.jones@example.com",
-    avatar: "https://placehold.co/100x100/86EFAC/14532D.png",
-    role: "Intern",
-    status: "Inactive",
-    lastActivity: "2024-06-30T17:00:00Z",
-  },
-]
-
-export type Employee = (typeof initialEmployees)[0]
+export interface Employee {
+  id: string
+  name: string
+  email: string
+  avatar: string
+  role: string
+  status: "Active" | "On Leave" | "Inactive"
+  lastActivity: string | Timestamp
+}
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState(initialEmployees)
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null
+  )
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const handleAddEmployee = (newEmployeeData: Omit<Employee, 'avatar' | 'status' | 'lastActivity'>) => {
-    const newEmployee: Employee = {
+  const fetchEmployees = async () => {
+    setIsLoading(true)
+    const q = query(collection(db, "employees"), orderBy("lastActivity", "desc"))
+    const querySnapshot = await getDocs(q)
+    const employeesData = querySnapshot.docs.map((doc) => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        name: data.name,
+        email: data.email,
+        avatar: data.avatar,
+        role: data.role,
+        status: data.status,
+        lastActivity: data.lastActivity.toDate().toISOString(),
+      }
+    }) as Employee[]
+    setEmployees(employeesData)
+    setIsLoading(false)
+  }
+
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
+
+  const handleAddEmployee = async (
+    newEmployeeData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
+  ) => {
+    const newEmployee = {
       ...newEmployeeData,
       avatar: `https://placehold.co/100x100.png`,
       status: "Active",
-      lastActivity: new Date().toISOString(),
+      lastActivity: new Date(),
     }
-    setEmployees((prev) => [newEmployee, ...prev])
-    setIsAddOpen(false)
+    try {
+      await addDoc(collection(db, "employees"), newEmployee)
+      fetchEmployees() // Refetch to get the new list with ID
+      setIsAddOpen(false)
+    } catch (error) {
+      console.error("Error adding employee: ", error)
+    }
   }
 
-  const handleEditEmployee = (
-    originalEmail: string,
-    updatedData: Omit<Employee, "avatar" | "status" | "lastActivity">
+  const handleEditEmployee = async (
+    id: string,
+    updatedData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
   ) => {
-    setEmployees((prev) =>
-      prev.map((employee) =>
-        employee.email === originalEmail
-          ? { ...employee, ...updatedData }
-          : employee
-      )
-    )
-    setIsEditOpen(false)
+    if (!id) return
+    const employeeDocRef = doc(db, "employees", id)
+    try {
+      await updateDoc(employeeDocRef, {
+        ...updatedData,
+      })
+      fetchEmployees()
+      setIsEditOpen(false)
+    } catch (error) {
+      console.error("Error updating employee: ", error)
+    }
   }
 
-  const handleDeleteEmployee = () => {
-    if (!selectedEmployee) return;
-    setEmployees((prev) =>
-      prev.filter((employee) => employee.email !== selectedEmployee.email)
-    );
-    setIsDeleteAlertOpen(false)
-  };
+  const handleDeleteEmployee = async () => {
+    if (!selectedEmployee) return
+    try {
+      await deleteDoc(doc(db, "employees", selectedEmployee.id))
+      fetchEmployees()
+      setIsDeleteAlertOpen(false)
+    } catch (error) {
+      console.error("Error deleting employee: ", error)
+    }
+  }
 
-  const handleSetStatus = (email: string, status: string) => {
-    setEmployees((prev) =>
-      prev.map((employee) =>
-        employee.email === email
-          ? { ...employee, status }
-          : employee
-      )
-    );
-  };
+  const handleSetStatus = async (
+    id: string,
+    status: "Active" | "On Leave" | "Inactive"
+  ) => {
+    const employeeDocRef = doc(db, "employees", id)
+    try {
+      await updateDoc(employeeDocRef, { status })
+      fetchEmployees()
+    } catch (error) {
+      console.error("Error updating status: ", error)
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -153,29 +175,35 @@ export default function EmployeesPage() {
           >
             {status}
           </Badge>
-        );
+        )
       case "Inactive":
-        return <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200 hover:bg-red-200">{status}</Badge>;
+        return (
+          <Badge
+            variant="destructive"
+            className="bg-red-100 text-red-800 border-red-200 hover:bg-red-200"
+          >
+            {status}
+          </Badge>
+        )
       case "On Leave":
         return (
           <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200">
             {status}
           </Badge>
-        );
+        )
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary">{status}</Badge>
     }
-  };
-
+  }
 
   return (
     <AppLayout>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Employees</h1>
-           <Button onClick={() => setIsAddOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Employee
-            </Button>
+          <Button onClick={() => setIsAddOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Employee
+          </Button>
         </div>
         <Card>
           <CardHeader>
@@ -198,61 +226,124 @@ export default function EmployeesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {employees.map((employee) => (
-                  <TableRow key={employee.email}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={employee.avatar} alt={employee.name} data-ai-hint="profile picture" />
-                          <AvatarFallback>
-                            {employee.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{employee.name}</div>
-                          <div className="text-sm text-muted-foreground">{employee.email}</div>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-9 w-9 rounded-full" />
+                          <div className="space-y-1">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-3 w-32" />
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{employee.role}</TableCell>
-                    <TableCell>
-                     {getStatusBadge(employee.status)}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(employee.lastActivity).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-8 w-8" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : employees.length > 0 ? (
+                  employees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage
+                              src={employee.avatar}
+                              alt={employee.name}
+                              data-ai-hint="profile picture"
+                            />
+                            <AvatarFallback>
+                              {employee.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{employee.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {employee.email}
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{employee.role}</TableCell>
+                      <TableCell>{getStatusBadge(employee.status)}</TableCell>
+                      <TableCell>
+                        {new Date(
+                          typeof employee.lastActivity === "string"
+                            ? employee.lastActivity
+                            : employee.lastActivity.toDate()
+                        ).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <Button
+                              aria-haspopup="true"
+                              size="icon"
+                              variant="ghost"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                               <span className="sr-only">Toggle menu</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => {
-                              setSelectedEmployee(employee)
-                              setIsEditOpen(true)
-                            }}>
+                            <DropdownMenuItem
+                              onSelect={() => {
+                                setSelectedEmployee(employee)
+                                setIsEditOpen(true)
+                              }}
+                            >
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => {
-                              setSelectedEmployee(employee)
-                              setIsDetailsOpen(true)
-                            }}>
+                            <DropdownMenuItem
+                              onSelect={() => {
+                                setSelectedEmployee(employee)
+                                setIsDetailsOpen(true)
+                              }}
+                            >
                               View Details
                             </DropdownMenuItem>
                             <DropdownMenuSub>
-                              <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
+                              <DropdownMenuSubTrigger>
+                                Change Status
+                              </DropdownMenuSubTrigger>
                               <DropdownMenuPortal>
                                 <DropdownMenuSubContent>
-                                  <DropdownMenuItem onClick={() => handleSetStatus(employee.email, 'Active')}>Active</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleSetStatus(employee.email, 'On Leave')}>On Leave</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleSetStatus(employee.email, 'Inactive')}>Inactive</DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleSetStatus(employee.id, "Active")
+                                    }
+                                  >
+                                    Active
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleSetStatus(employee.id, "On Leave")
+                                    }
+                                  >
+                                    On Leave
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleSetStatus(employee.id, "Inactive")
+                                    }
+                                  >
+                                    Inactive
+                                  </DropdownMenuItem>
                                 </DropdownMenuSubContent>
                               </DropdownMenuPortal>
                             </DropdownMenuSub>
@@ -268,29 +359,39 @@ export default function EmployeesPage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="h-24 text-center"
+                    >
+                      No employees found.
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
 
-       <AddEmployeeForm
+      <AddEmployeeForm
         onAddEmployee={handleAddEmployee}
         isOpen={isAddOpen}
         onOpenChange={setIsAddOpen}
-       />
+      />
 
-       {selectedEmployee && (
+      {selectedEmployee && (
         <>
           <EditEmployeeForm
             employee={{
+              id: selectedEmployee.id,
               name: selectedEmployee.name,
               email: selectedEmployee.email,
               role: selectedEmployee.role,
-              originalEmail: selectedEmployee.email,
             }}
             onEditEmployee={handleEditEmployee}
             isOpen={isEditOpen}
@@ -301,17 +402,24 @@ export default function EmployeesPage() {
             isOpen={isDetailsOpen}
             onOpenChange={setIsDetailsOpen}
           />
-          <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+          <AlertDialog
+            open={isDeleteAlertOpen}
+            onOpenChange={setIsDeleteAlertOpen}
+          >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete {selectedEmployee.name}&apos;s account.
+                  This action cannot be undone. This will permanently delete{" "}
+                  {selectedEmployee.name}&apos;s account.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteEmployee} className="bg-destructive hover:bg-destructive/90">
+                <AlertDialogAction
+                  onClick={handleDeleteEmployee}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>

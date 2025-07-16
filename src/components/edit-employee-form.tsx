@@ -40,9 +40,9 @@ const editEmployeeSchema = z.object({
 type EditEmployeeValues = z.infer<typeof editEmployeeSchema>
 
 interface EditEmployeeFormProps {
-  employee: EditEmployeeValues & { originalEmail: string }
+  employee: EditEmployeeValues & { id: string }
   onEditEmployee: (
-    originalEmail: string,
+    id: string,
     data: EditEmployeeValues
   ) => void
   isOpen: boolean
@@ -75,7 +75,7 @@ export function EditEmployeeForm({
   }, [employee, form, isOpen])
 
   function onSubmit(data: EditEmployeeValues) {
-    onEditEmployee(employee.originalEmail, data)
+    onEditEmployee(employee.id, data)
     onOpenChange(false)
   }
 
