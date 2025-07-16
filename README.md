@@ -1,4 +1,4 @@
-# VerdantFlow
+gi# VerdantFlow
 
 VerdantFlow is a comprehensive application designed to streamline various business operations. It provides features for customer management, employee tracking, stock management, and task oversight, with a key focus on optimizing workflows through AI-powered suggestions.
 
@@ -24,7 +24,37 @@ To get a local copy up and running, follow these steps:
 
 1.  Clone the repository:
 
+    
+```
+bash
+    git clone https://github.com/BILDEK/studio.git
+    
+```
+2.  Navigate to the project directory:
+    
+```
+bash
+    cd studio
+    
+```
+3.  Install dependencies:
+```
+bash
+    npm install
+    
+```
+4.  Run the development server:
+```
+bash
+    npm run dev
+    
+```
+The application will be available at `http://localhost:3000`.
 
+## Contributing
 
-1.  Clone the repository:
+We welcome contributions! Please see the `CONTRIBUTING.md` (if you have one) for details on how to contribute.
 
+## License
+
+This project is licensed under the MIT License - see the `LICENSE` file for details.
