@@ -19,6 +19,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu"
 import {
   Table,
@@ -121,10 +125,11 @@ export default function EmployeesPage() {
     setIsEditOpen(false)
   }
 
-  const handleDeactivateEmployee = (email: string) => {
+  const handleDeactivateEmployee = () => {
+    if (!selectedEmployee) return;
     setEmployees((prev) =>
       prev.map((employee) =>
-        employee.email === email
+        employee.email === selectedEmployee.email
           ? { ...employee, status: "Inactive" }
           : employee
       )
@@ -132,11 +137,11 @@ export default function EmployeesPage() {
     setIsDeactivateAlertOpen(false)
   };
 
-  const handleActivateEmployee = (email: string) => {
+  const handleSetStatus = (email: string, status: string) => {
     setEmployees((prev) =>
       prev.map((employee) =>
         employee.email === email
-          ? { ...employee, status: "Active" }
+          ? { ...employee, status }
           : employee
       )
     );
@@ -172,11 +177,9 @@ export default function EmployeesPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Employees</h1>
-           <AddEmployeeForm onAddEmployee={handleAddEmployee} isOpen={isAddOpen} onOpenChange={setIsAddOpen}>
-            <Button>
+           <Button onClick={() => setIsAddOpen(true)}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Employee
             </Button>
-          </AddEmployeeForm>
         </div>
         <Card>
           <CardHeader>
@@ -244,22 +247,26 @@ export default function EmployeesPage() {
                             }}>
                               View Details
                             </DropdownMenuItem>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
+                              <DropdownMenuPortal>
+                                <DropdownMenuSubContent>
+                                  <DropdownMenuItem onClick={() => handleSetStatus(employee.email, 'Active')}>Active</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleSetStatus(employee.email, 'On Leave')}>On Leave</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleSetStatus(employee.email, 'Inactive')}>Inactive</DropdownMenuItem>
+                                </DropdownMenuSubContent>
+                              </DropdownMenuPortal>
+                            </DropdownMenuSub>
                             <DropdownMenuSeparator />
-                             {employee.status === 'Inactive' ? (
-                                <DropdownMenuItem onClick={() => handleActivateEmployee(employee.email)}>
-                                  Activate
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onSelect={() => {
-                                    setSelectedEmployee(employee)
-                                    setIsDeactivateAlertOpen(true)
-                                  }}
-                                >
-                                  Deactivate
-                                </DropdownMenuItem>
-                              )}
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onSelect={() => {
+                                setSelectedEmployee(employee)
+                                setIsDeactivateAlertOpen(true)
+                              }}
+                            >
+                              Deactivate
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -270,6 +277,12 @@ export default function EmployeesPage() {
           </CardContent>
         </Card>
       </div>
+
+       <AddEmployeeForm
+        onAddEmployee={handleAddEmployee}
+        isOpen={isAddOpen}
+        onOpenChange={setIsAddOpen}
+       />
 
        {selectedEmployee && (
         <>
@@ -299,7 +312,7 @@ export default function EmployeesPage() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleDeactivateEmployee(selectedEmployee.email)}>
+                <AlertDialogAction onClick={handleDeactivateEmployee}>
                   Deactivate
                 </AlertDialogAction>
               </AlertDialogFooter>

@@ -13,7 +13,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Form,
@@ -31,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { PlusCircle } from "lucide-react"
 
 const addEmployeeSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -43,12 +41,11 @@ type AddEmployeeValues = z.infer<typeof addEmployeeSchema>
 
 interface AddEmployeeFormProps {
   onAddEmployee: (employee: Omit<AddEmployeeValues, "confirmPassword">) => void
-  children: React.ReactNode
+  isOpen: boolean
+  onOpenChange: (isOpen: boolean) => void
 }
 
-export function AddEmployeeForm({ onAddEmployee, children }: AddEmployeeFormProps) {
-  const [isOpen, setIsOpen] = React.useState(false)
-
+export function AddEmployeeForm({ onAddEmployee, isOpen, onOpenChange }: AddEmployeeFormProps) {
   const form = useForm<AddEmployeeValues>({
     resolver: zodResolver(addEmployeeSchema),
     defaultValues: {
@@ -61,12 +58,11 @@ export function AddEmployeeForm({ onAddEmployee, children }: AddEmployeeFormProp
   function onSubmit(data: AddEmployeeValues) {
     onAddEmployee(data)
     form.reset()
-    setIsOpen(false)
+    onOpenChange(false)
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Employee</DialogTitle>
@@ -136,6 +132,7 @@ export function AddEmployeeForm({ onAddEmployee, children }: AddEmployeeFormProp
               )}
             />
             <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit">Add Employee</Button>
             </DialogFooter>
           </form>
