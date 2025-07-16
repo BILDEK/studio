@@ -63,9 +63,11 @@ export function EmployeeDetailsDialog({
             <AvatarImage src={employee.avatar} alt={employee.name} data-ai-hint="profile picture" />
             <AvatarFallback>
               {employee.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")}
+                ? employee.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                : "???"}
             </AvatarFallback>
           </Avatar>
           <div className="text-center">
