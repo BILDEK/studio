@@ -29,20 +29,23 @@ export function EmployeeDetailsDialog({
     switch (status) {
       case "Active":
         return (
-          <Badge className="bg-primary/20 text-primary-foreground border-primary/20">
+          <Badge
+            variant="default"
+            className="bg-primary/20 text-primary border-primary/20"
+          >
             {status}
           </Badge>
-        )
+        );
+      case "Inactive":
+        return <Badge variant="destructive">{status}</Badge>;
       case "On Leave":
         return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+          <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/20 hover:bg-yellow-500/30">
             {status}
           </Badge>
-        )
-      case "Inactive":
-        return <Badge variant="destructive">{status}</Badge>
+        );
       default:
-        return <Badge variant="secondary">{status}</Badge>
+        return <Badge variant="secondary">{status}</Badge>;
     }
   }
 

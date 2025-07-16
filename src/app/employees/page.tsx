@@ -91,6 +91,7 @@ export type Employee = (typeof initialEmployees)[0]
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState(initialEmployees)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [isAddOpen, setIsAddOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isDeactivateAlertOpen, setIsDeactivateAlertOpen] = useState(false)
@@ -103,6 +104,7 @@ export default function EmployeesPage() {
       lastActivity: new Date().toISOString(),
     }
     setEmployees((prev) => [newEmployee, ...prev])
+    setIsAddOpen(false)
   }
 
   const handleEditEmployee = (
@@ -116,6 +118,7 @@ export default function EmployeesPage() {
           : employee
       )
     )
+    setIsEditOpen(false)
   }
 
   const handleDeactivateEmployee = (email: string) => {
@@ -126,6 +129,7 @@ export default function EmployeesPage() {
           : employee
       )
     );
+    setIsDeactivateAlertOpen(false)
   };
 
   const handleActivateEmployee = (email: string) => {
@@ -138,13 +142,37 @@ export default function EmployeesPage() {
     );
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "Active":
+        return (
+          <Badge
+            variant="default"
+            className="bg-primary/20 text-primary border-primary/20 hover:bg-primary/30"
+          >
+            {status}
+          </Badge>
+        );
+      case "Inactive":
+        return <Badge variant="destructive">{status}</Badge>;
+      case "On Leave":
+        return (
+          <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/20 hover:bg-yellow-500/30">
+            {status}
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
 
   return (
     <AppLayout>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Employees</h1>
-          <AddEmployeeForm onAddEmployee={handleAddEmployee}>
+           <AddEmployeeForm onAddEmployee={handleAddEmployee} isOpen={isAddOpen} onOpenChange={setIsAddOpen}>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Employee
             </Button>
@@ -189,22 +217,7 @@ export default function EmployeesPage() {
                     </TableCell>
                     <TableCell>{employee.role}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          employee.status === "Active"
-                            ? "default"
-                            : employee.status === "Inactive"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                        className={
-                          employee.status === "Active"
-                            ? "bg-primary/20 text-[hsl(var(--primary))] border-primary/20 hover:bg-primary/30"
-                            : ""
-                        }
-                      >
-                        {employee.status}
-                      </Badge>
+                     {getStatusBadge(employee.status)}
                     </TableCell>
                     <TableCell>
                       {new Date(employee.lastActivity).toLocaleDateString()}
@@ -243,7 +256,6 @@ export default function EmployeesPage() {
                                     setSelectedEmployee(employee)
                                     setIsDeactivateAlertOpen(true)
                                   }}
-                                  disabled={employee.status === 'Inactive'}
                                 >
                                   Deactivate
                                 </DropdownMenuItem>
