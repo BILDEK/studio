@@ -2,8 +2,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { formatDistanceToNow } from 'date-fns'
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -58,7 +59,7 @@ export interface Employee {
   avatar: string
   role: string
   status: "Active" | "On Leave" | "Inactive"
-  lastActivity: string
+  lastActivity: Date
 }
 
 const sampleEmployees = [
@@ -68,7 +69,7 @@ const sampleEmployees = [
     role: "Project Manager",
     status: "Active",
     avatar: `https://placehold.co/100x100/A3E635/4D7C0F.png`,
-    lastActivity: "2 hours ago",
+    lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
   },
   {
     name: "John Smith",
@@ -76,7 +77,7 @@ const sampleEmployees = [
     role: "Lead Developer",
     status: "Active",
     avatar: `https://placehold.co/100x100/6EE7B7/047857.png`,
-    lastActivity: "5 hours ago",
+    lastActivity: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
   },
   {
     name: "Peter Jones",
@@ -84,7 +85,7 @@ const sampleEmployees = [
     role: "UX Designer",
     status: "On Leave",
     avatar: `https://placehold.co/100x100/34D399/065F46.png`,
-    lastActivity: "1 day ago",
+    lastActivity: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
   },
   {
     name: "Olivia Martin",
@@ -92,7 +93,7 @@ const sampleEmployees = [
     role: "Marketing Specialist",
     status: "Active",
     avatar: `https://placehold.co/100x100/A7F3D0/064E3B.png`,
-    lastActivity: "15 minutes ago",
+    lastActivity: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
   },
     {
     name: "Noah Brown",
@@ -100,7 +101,7 @@ const sampleEmployees = [
     role: "Intern",
     status: "Inactive",
     avatar: `https://placehold.co/100x100/86EFAC/14532D.png`,
-    lastActivity: "3 weeks ago",
+    lastActivity: new Date(Date.now() - 3 * 7 * 24 * 60 * 60 * 1000), // 3 weeks ago
   },
 ]
 
@@ -129,16 +130,24 @@ export default function EmployeesPage() {
         await batch.commit()
         // Fetch again after populating
         const newQuerySnapshot = await getDocs(employeesCollectionRef)
-        const employeesData = newQuerySnapshot.docs.map((doc) => ({
-          ...doc.data(),
-          id: doc.id,
-        })) as Employee[]
+        const employeesData = newQuerySnapshot.docs.map((doc) => {
+          const data = doc.data()
+          return {
+            ...data,
+            id: doc.id,
+            lastActivity: (data.lastActivity as Timestamp).toDate(),
+          } as Employee
+        })
         setEmployees(employeesData)
       } else {
-        const employeesData = querySnapshot.docs.map((doc) => ({
-          ...doc.data(),
-          id: doc.id,
-        })) as Employee[]
+        const employeesData = querySnapshot.docs.map((doc) => {
+           const data = doc.data();
+           return {
+             ...data,
+             id: doc.id,
+             lastActivity: (data.lastActivity as Timestamp)?.toDate() ?? new Date(),
+           } as Employee;
+        });
         setEmployees(employeesData)
       }
     } catch (error) {
@@ -159,7 +168,7 @@ export default function EmployeesPage() {
         ...newEmployeeData,
         status: "Active" as const,
         avatar: `https://placehold.co/100x100.png`,
-        lastActivity: 'Just now',
+        lastActivity: new Date(),
       }
       await addDoc(employeesCollectionRef, employeeToAdd)
       fetchEmployees()
@@ -279,7 +288,7 @@ export default function EmployeesPage() {
                       </TableCell>
                       <TableCell>{employee.role}</TableCell>
                       <TableCell>{getStatusBadge(employee.status)}</TableCell>
-                      <TableCell>{employee.lastActivity || 'N/A'}</TableCell>
+                      <TableCell>{employee.lastActivity ? `${formatDistanceToNow(employee.lastActivity)} ago` : 'N/A'}</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

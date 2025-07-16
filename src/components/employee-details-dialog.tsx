@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -90,7 +91,7 @@ export function EmployeeDetailsDialog({
               Last Activity
             </span>
             <span className="col-span-2">
-              {new Date(employee.lastActivity).toLocaleString()}
+              {employee.lastActivity ? employee.lastActivity.toLocaleString() : 'N/A'}
             </span>
           </div>
         </div>
