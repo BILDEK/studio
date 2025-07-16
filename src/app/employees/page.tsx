@@ -41,7 +41,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
 const initialEmployees = [
@@ -200,7 +199,7 @@ export default function EmployeesPage() {
                         }
                         className={
                           employee.status === "Active"
-                            ? "bg-primary/20 text-primary-foreground border-primary/20 hover:bg-primary/30"
+                            ? "bg-primary/20 text-[hsl(var(--primary))] border-primary/20 hover:bg-primary/30"
                             : ""
                         }
                       >
