@@ -195,7 +195,7 @@ export default function EmployeesPage() {
                       {new Date(employee.lastActivity).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <AlertDialog>
+                       <AlertDialog>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -205,26 +205,26 @@ export default function EmployeesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                             <EditEmployeeForm
-                              employee={{
-                                name: employee.name,
-                                email: employee.email,
-                                role: employee.role,
-                                originalEmail: employee.email,
-                              }}
-                              onEditEmployee={handleEditEmployee}
-                            >
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                Edit
-                              </DropdownMenuItem>
+                            <EditEmployeeForm
+                                employee={{
+                                  name: employee.name,
+                                  email: employee.email,
+                                  role: employee.role,
+                                  originalEmail: employee.email,
+                                }}
+                                onEditEmployee={handleEditEmployee}
+                              >
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                  Edit
+                                </DropdownMenuItem>
                             </EditEmployeeForm>
                             <EmployeeDetailsDialog employee={employee}>
-                               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                                 View Details
                               </DropdownMenuItem>
                             </EmployeeDetailsDialog>
                             <AlertDialogTrigger asChild>
-                              <DropdownMenuItem
+                               <DropdownMenuItem
                                 className="text-destructive"
                                 onSelect={(e) => e.preventDefault()}
                                 disabled={employee.status === 'Inactive'}
