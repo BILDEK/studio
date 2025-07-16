@@ -22,7 +22,5 @@ VerdantFlow is a comprehensive application designed to streamline various busine
 
 To get a local copy up and running, follow these steps:
 
-To get started, take a look at src/app/page.tsx.
-
 1.  Clone the repository:
 
