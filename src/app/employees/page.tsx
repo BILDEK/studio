@@ -8,7 +8,6 @@ import {
   updateDoc,
   deleteDoc,
   doc,
-  query,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
@@ -104,33 +103,39 @@ export default function EmployeesPage() {
 
   const getEmployees = async () => {
     setIsLoading(true)
-    const data = await getDocs(employeesCollectionRef)
-    
-    if (data.empty) {
-      // Seed the database if it's empty
-      for (const emp of initialEmployees) {
-        await addDoc(employeesCollectionRef, emp)
+    try {
+      const data = await getDocs(employeesCollectionRef)
+
+      if (data.empty) {
+        // Seed the database if it's empty
+        for (const emp of initialEmployees) {
+          await addDoc(employeesCollectionRef, emp)
+        }
+        // Fetch again after seeding
+        const newData = await getDocs(employeesCollectionRef)
+        const fetchedEmployees = newData.docs.map((d) => ({
+          ...d.data(),
+          id: d.id,
+          avatar: `https://placehold.co/100x100.png`,
+          lastActivity: "Just now",
+        })) as Employee[]
+        setEmployees(fetchedEmployees)
+      } else {
+        const fetchedEmployees = data.docs.map((d) => ({
+          ...d.data(),
+          id: d.id,
+          avatar: `https://placehold.co/100x100.png`,
+          lastActivity: "1 day ago",
+        })) as Employee[]
+        setEmployees(fetchedEmployees)
       }
-      // Fetch again after seeding
-      const newData = await getDocs(employeesCollectionRef)
-      const fetchedEmployees = newData.docs.map((d) => ({
-        ...d.data(),
-        id: d.id,
-        avatar: `https://placehold.co/100x100.png`,
-        lastActivity: new Date().toLocaleDateString(),
-      })) as Employee[]
-      setEmployees(fetchedEmployees)
-    } else {
-      const fetchedEmployees = data.docs.map((d) => ({
-        ...d.data(),
-        id: d.id,
-        avatar: `https://placehold.co/100x100.png`,
-        lastActivity: new Date().toLocaleDateString(),
-      })) as Employee[]
-      setEmployees(fetchedEmployees)
+    } catch (error) {
+      console.error("Error fetching employees:", error)
+      // Set employees to an empty array in case of an error
+      setEmployees([])
+    } finally {
+      setIsLoading(false)
     }
-    
-    setIsLoading(false)
   }
 
   useEffect(() => {
