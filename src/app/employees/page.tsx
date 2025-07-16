@@ -136,6 +136,16 @@ export default function EmployeesPage() {
     );
     setIsDeactivateAlertOpen(false)
   };
+  
+  const handleActivateEmployee = (email: string) => {
+    setEmployees((prev) =>
+      prev.map((employee) =>
+        employee.email === email
+          ? { ...employee, status: "Active" }
+          : employee
+      )
+    );
+  };
 
   const handleSetStatus = (email: string, status: string) => {
     setEmployees((prev) =>
@@ -153,16 +163,16 @@ export default function EmployeesPage() {
         return (
           <Badge
             variant="default"
-            className="bg-primary/20 text-primary border-primary/20 hover:bg-primary/30"
+            className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200"
           >
             {status}
           </Badge>
         );
       case "Inactive":
-        return <Badge variant="destructive">{status}</Badge>;
+        return <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200 hover:bg-red-200">{status}</Badge>;
       case "On Leave":
         return (
-          <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/20 hover:bg-yellow-500/30">
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200">
             {status}
           </Badge>
         );
@@ -215,7 +225,10 @@ export default function EmployeesPage() {
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="font-medium">{employee.name}</div>
+                        <div>
+                          <div className="font-medium">{employee.name}</div>
+                          <div className="text-sm text-muted-foreground">{employee.email}</div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>{employee.role}</TableCell>
@@ -258,15 +271,23 @@ export default function EmployeesPage() {
                               </DropdownMenuPortal>
                             </DropdownMenuSub>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onSelect={() => {
-                                setSelectedEmployee(employee)
-                                setIsDeactivateAlertOpen(true)
-                              }}
-                            >
-                              Deactivate
-                            </DropdownMenuItem>
+                             {employee.status === "Inactive" ? (
+                              <DropdownMenuItem
+                                onClick={() => handleActivateEmployee(employee.email)}
+                              >
+                                Activate
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onSelect={() => {
+                                  setSelectedEmployee(employee)
+                                  setIsDeactivateAlertOpen(true)
+                                }}
+                              >
+                                Deactivate
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>

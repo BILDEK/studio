@@ -31,16 +31,16 @@ export function EmployeeDetailsDialog({
         return (
           <Badge
             variant="default"
-            className="bg-primary/20 text-primary border-primary/20"
+            className="bg-green-100 text-green-800 border-green-200"
           >
             {status}
           </Badge>
         );
       case "Inactive":
-        return <Badge variant="destructive">{status}</Badge>;
+        return <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">{status}</Badge>;
       case "On Leave":
         return (
-          <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/20 hover:bg-yellow-500/30">
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
             {status}
           </Badge>
         );
