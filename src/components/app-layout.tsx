@@ -74,6 +74,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </Link>
               </SidebarMenuItem>
             ))}
+             <SidebarMenuItem>
+                <Link href="/profile">
+                  <SidebarMenuButton
+                    isActive={pathname === "/profile"}
+                    tooltip="Profile"
+                  >
+                    <User />
+                    <span>Profile</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
@@ -93,7 +104,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <DropdownMenuContent align="start" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => router.push("/profile")}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
