@@ -84,7 +84,7 @@ export default function EmployeesPage() {
 
   const fetchEmployees = async () => {
     setIsLoading(true)
-    const q = query(collection(db, "employees"), orderBy("lastActivity", "desc"))
+    const q = query(collection(db, "test0"), orderBy("lastActivity", "desc"))
     const querySnapshot = await getDocs(q)
     const employeesData = querySnapshot.docs.map((doc) => {
       const data = doc.data()
@@ -113,10 +113,10 @@ export default function EmployeesPage() {
       ...newEmployeeData,
       avatar: `https://placehold.co/100x100.png`,
       status: "Active",
-      lastActivity: new Date(),
+      lastActivity: Timestamp.now(),
     }
     try {
-      await addDoc(collection(db, "employees"), newEmployee)
+      await addDoc(collection(db, "test0"), newEmployee)
       fetchEmployees() // Refetch to get the new list with ID
       setIsAddOpen(false)
     } catch (error) {
@@ -129,7 +129,7 @@ export default function EmployeesPage() {
     updatedData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
   ) => {
     if (!id) return
-    const employeeDocRef = doc(db, "employees", id)
+    const employeeDocRef = doc(db, "test0", id)
     try {
       await updateDoc(employeeDocRef, {
         ...updatedData,
@@ -144,7 +144,7 @@ export default function EmployeesPage() {
   const handleDeleteEmployee = async () => {
     if (!selectedEmployee) return
     try {
-      await deleteDoc(doc(db, "employees", selectedEmployee.id))
+      await deleteDoc(doc(db, "test0", selectedEmployee.id))
       fetchEmployees()
       setIsDeleteAlertOpen(false)
     } catch (error) {
@@ -156,7 +156,7 @@ export default function EmployeesPage() {
     id: string,
     status: "Active" | "On Leave" | "Inactive"
   ) => {
-    const employeeDocRef = doc(db, "employees", id)
+    const employeeDocRef = doc(db, "test0", id)
     try {
       await updateDoc(employeeDocRef, { status })
       fetchEmployees()
@@ -284,7 +284,7 @@ export default function EmployeesPage() {
                         {new Date(
                           typeof employee.lastActivity === "string"
                             ? employee.lastActivity
-                            : employee.lastActivity.toDate()
+                            : (employee.lastActivity as Timestamp).toDate()
                         ).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
