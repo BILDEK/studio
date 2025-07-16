@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -25,8 +28,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { MoreHorizontal, PlusCircle } from "lucide-react"
+import { AddEmployeeForm } from "@/components/add-employee-form"
 
-const employees = [
+const initialEmployees = [
   {
     name: "Olivia Martin",
     email: "olivia.martin@example.com",
@@ -69,15 +73,31 @@ const employees = [
   },
 ]
 
+type Employee = (typeof initialEmployees)[0]
+
 export default function EmployeesPage() {
+  const [employees, setEmployees] = useState(initialEmployees)
+
+  const handleAddEmployee = (newEmployeeData: Omit<Employee, 'avatar' | 'status' | 'lastActivity'>) => {
+    const newEmployee: Employee = {
+      ...newEmployeeData,
+      avatar: `https://placehold.co/100x100.png`,
+      status: "Active",
+      lastActivity: new Date().toISOString(),
+    }
+    setEmployees((prev) => [newEmployee, ...prev])
+  }
+
   return (
     <AppLayout>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Employees</h1>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Employee
-          </Button>
+          <AddEmployeeForm onAddEmployee={handleAddEmployee}>
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Employee
+            </Button>
+          </AddEmployeeForm>
         </div>
         <Card>
           <CardHeader>
