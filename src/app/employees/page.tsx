@@ -1,7 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import type { Timestamp } from "firebase/firestore"
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+} from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -60,30 +69,24 @@ export interface Employee {
   lastActivity: string
 }
 
-const initialEmployees: Omit<Employee, "id">[] = [
+const initialEmployees: Omit<Employee, "id" | "avatar" | "lastActivity">[] = [
   {
     name: "Jane Doe",
     email: "jane.doe@example.com",
     role: "Project Manager",
     status: "Active",
-    avatar: `https://placehold.co/100x100.png`,
-    lastActivity: new Date().toLocaleDateString(),
   },
   {
     name: "John Smith",
     email: "john.smith@example.com",
     role: "Lead Developer",
     status: "Active",
-    avatar: `https://placehold.co/100x100.png`,
-    lastActivity: new Date().toLocaleDateString(),
   },
   {
     name: "Peter Jones",
     email: "peter.jones@example.com",
     role: "UX Designer",
     status: "On Leave",
-    avatar: `https://placehold.co/100x100.png`,
-    lastActivity: new Date().toLocaleDateString(),
   },
 ]
 
@@ -97,26 +100,48 @@ export default function EmployeesPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const employeesCollectionRef = collection(db, "test0")
+
+  const getEmployees = async () => {
+    setIsLoading(true)
+    const data = await getDocs(employeesCollectionRef)
+    
+    if (data.empty) {
+      // Seed the database if it's empty
+      for (const emp of initialEmployees) {
+        await addDoc(employeesCollectionRef, emp)
+      }
+      // Fetch again after seeding
+      const newData = await getDocs(employeesCollectionRef)
+      const fetchedEmployees = newData.docs.map((d) => ({
+        ...d.data(),
+        id: d.id,
+        avatar: `https://placehold.co/100x100.png`,
+        lastActivity: new Date().toLocaleDateString(),
+      })) as Employee[]
+      setEmployees(fetchedEmployees)
+    } else {
+      const fetchedEmployees = data.docs.map((d) => ({
+        ...d.data(),
+        id: d.id,
+        avatar: `https://placehold.co/100x100.png`,
+        lastActivity: new Date().toLocaleDateString(),
+      })) as Employee[]
+      setEmployees(fetchedEmployees)
+    }
+    
+    setIsLoading(false)
+  }
 
   useEffect(() => {
-    // Simulate fetching data
-    setTimeout(() => {
-      setEmployees(initialEmployees.map((e, i) => ({ ...e, id: `emp-${i + 1}` })))
-      setIsLoading(false)
-    }, 1000)
+    getEmployees()
   }, [])
 
   const handleAddEmployee = async (
     newEmployeeData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
   ) => {
-    const newEmployee: Employee = {
-      ...newEmployeeData,
-      id: `emp-${employees.length + 1}`,
-      avatar: `https://placehold.co/100x100.png`,
-      status: "Active",
-      lastActivity: new Date().toLocaleDateString(),
-    }
-    setEmployees([...employees, newEmployee]);
+    await addDoc(employeesCollectionRef, { ...newEmployeeData, status: "Active" })
+    getEmployees() // Refresh list
     setIsAddOpen(false)
   }
 
@@ -124,17 +149,17 @@ export default function EmployeesPage() {
     id: string,
     updatedData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
   ) => {
-     setEmployees(
-      employees.map((emp) =>
-        emp.id === id ? { ...emp, ...updatedData } : emp
-      )
-    )
+    const employeeDoc = doc(db, "test0", id)
+    await updateDoc(employeeDoc, updatedData)
+    getEmployees() // Refresh list
     setIsEditOpen(false)
   }
 
   const handleDeleteEmployee = async () => {
     if (!selectedEmployee) return
-    setEmployees(employees.filter((emp) => emp.id !== selectedEmployee.id))
+    const employeeDoc = doc(db, "test0", selectedEmployee.id)
+    await deleteDoc(employeeDoc)
+    getEmployees() // Refresh list
     setIsDeleteAlertOpen(false)
   }
 
@@ -142,9 +167,9 @@ export default function EmployeesPage() {
     id: string,
     status: "Active" | "On Leave" | "Inactive"
   ) => {
-    setEmployees(
-      employees.map((emp) => (emp.id === id ? { ...emp, status } : emp))
-    )
+    const employeeDoc = doc(db, "test0", id)
+    await updateDoc(employeeDoc, { status })
+    getEmployees() // Refresh list
   }
 
   const getStatusBadge = (status: string) => {
