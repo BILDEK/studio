@@ -11,26 +11,25 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Separator } from "./ui/separator"
 
 interface EmployeeDetailsDialogProps {
   employee: Employee
-  children: React.ReactNode
+  isOpen: boolean
+  onOpenChange: (isOpen: boolean) => void
 }
 
 export function EmployeeDetailsDialog({
   employee,
-  children,
+  isOpen,
+  onOpenChange,
 }: EmployeeDetailsDialogProps) {
-  const [isOpen, setIsOpen] = React.useState(false)
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Active":
         return (
-          <Badge className="bg-primary/20 text-primary border-primary/20">
+          <Badge className="bg-primary/20 text-primary-foreground border-primary/20">
             {status}
           </Badge>
         )
@@ -48,8 +47,7 @@ export function EmployeeDetailsDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Employee Details</DialogTitle>
@@ -91,7 +89,7 @@ export function EmployeeDetailsDialog({
             </span>
           </div>
         </div>
-        <Button onClick={() => setIsOpen(false)} className="mt-4 w-full">
+        <Button onClick={() => onOpenChange(false)} className="mt-4 w-full">
           Close
         </Button>
       </DialogContent>

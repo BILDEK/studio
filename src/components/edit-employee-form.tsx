@@ -13,7 +13,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Form,
@@ -46,16 +45,16 @@ interface EditEmployeeFormProps {
     originalEmail: string,
     data: EditEmployeeValues
   ) => void
-  children: React.ReactNode
+  isOpen: boolean
+  onOpenChange: (isOpen: boolean) => void
 }
 
 export function EditEmployeeForm({
   employee,
   onEditEmployee,
-  children,
+  isOpen,
+  onOpenChange,
 }: EditEmployeeFormProps) {
-  const [isOpen, setIsOpen] = React.useState(false)
-
   const form = useForm<EditEmployeeValues>({
     resolver: zodResolver(editEmployeeSchema),
     defaultValues: {
@@ -66,21 +65,22 @@ export function EditEmployeeForm({
   })
 
   React.useEffect(() => {
-    form.reset({
-      name: employee.name,
-      email: employee.email,
-      role: employee.role,
-    })
-  }, [employee, form])
+    if (isOpen) {
+      form.reset({
+        name: employee.name,
+        email: employee.email,
+        role: employee.role,
+      })
+    }
+  }, [employee, form, isOpen])
 
   function onSubmit(data: EditEmployeeValues) {
     onEditEmployee(employee.originalEmail, data)
-    setIsOpen(false)
+    onOpenChange(false)
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit Employee</DialogTitle>
@@ -150,7 +150,7 @@ export function EditEmployeeForm({
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setIsOpen(false)}>Cancel</Button>
+              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit">Save Changes</Button>
             </DialogFooter>
           </form>

@@ -17,6 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -90,6 +91,10 @@ export type Employee = (typeof initialEmployees)[0]
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState(initialEmployees)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [isDeactivateAlertOpen, setIsDeactivateAlertOpen] = useState(false)
 
   const handleAddEmployee = (newEmployeeData: Omit<Employee, 'avatar' | 'status' | 'lastActivity'>) => {
     const newEmployee: Employee = {
@@ -123,6 +128,17 @@ export default function EmployeesPage() {
       )
     );
   };
+
+  const handleActivateEmployee = (email: string) => {
+    setEmployees((prev) =>
+      prev.map((employee) =>
+        employee.email === email
+          ? { ...employee, status: "Active" }
+          : employee
+      )
+    );
+  };
+
 
   return (
     <AppLayout>
@@ -195,7 +211,6 @@ export default function EmployeesPage() {
                       {new Date(employee.lastActivity).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                       <AlertDialog>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -205,50 +220,37 @@ export default function EmployeesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <EditEmployeeForm
-                                employee={{
-                                  name: employee.name,
-                                  email: employee.email,
-                                  role: employee.role,
-                                  originalEmail: employee.email,
-                                }}
-                                onEditEmployee={handleEditEmployee}
-                              >
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                  Edit
+                            <DropdownMenuItem onSelect={() => {
+                              setSelectedEmployee(employee)
+                              setIsEditOpen(true)
+                            }}>
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => {
+                              setSelectedEmployee(employee)
+                              setIsDetailsOpen(true)
+                            }}>
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                             {employee.status === 'Inactive' ? (
+                                <DropdownMenuItem onClick={() => handleActivateEmployee(employee.email)}>
+                                  Activate
                                 </DropdownMenuItem>
-                            </EditEmployeeForm>
-                            <EmployeeDetailsDialog employee={employee}>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                View Details
-                              </DropdownMenuItem>
-                            </EmployeeDetailsDialog>
-                            <AlertDialogTrigger asChild>
-                               <DropdownMenuItem
-                                className="text-destructive"
-                                onSelect={(e) => e.preventDefault()}
-                                disabled={employee.status === 'Inactive'}
-                              >
-                                Deactivate
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
+                              ) : (
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onSelect={() => {
+                                    setSelectedEmployee(employee)
+                                    setIsDeactivateAlertOpen(true)
+                                  }}
+                                  disabled={employee.status === 'Inactive'}
+                                >
+                                  Deactivate
+                                </DropdownMenuItem>
+                              )}
                           </DropdownMenuContent>
                         </DropdownMenu>
-                         <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will mark {employee.name} as inactive. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeactivateEmployee(employee.email)}>
-                                Deactivate
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -257,6 +259,43 @@ export default function EmployeesPage() {
           </CardContent>
         </Card>
       </div>
+
+       {selectedEmployee && (
+        <>
+          <EditEmployeeForm
+            employee={{
+              name: selectedEmployee.name,
+              email: selectedEmployee.email,
+              role: selectedEmployee.role,
+              originalEmail: selectedEmployee.email,
+            }}
+            onEditEmployee={handleEditEmployee}
+            isOpen={isEditOpen}
+            onOpenChange={setIsEditOpen}
+          />
+          <EmployeeDetailsDialog
+            employee={selectedEmployee}
+            isOpen={isDetailsOpen}
+            onOpenChange={setIsDetailsOpen}
+          />
+          <AlertDialog open={isDeactivateAlertOpen} onOpenChange={setIsDeactivateAlertOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will mark {selectedEmployee.name} as inactive.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleDeactivateEmployee(selectedEmployee.email)}>
+                  Deactivate
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </AppLayout>
   )
 }
