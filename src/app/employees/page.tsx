@@ -135,7 +135,7 @@ export default function EmployeesPage() {
           return {
             ...data,
             id: doc.id,
-            lastActivity: (data.lastActivity as Timestamp).toDate(),
+            lastActivity: data.lastActivity instanceof Timestamp ? data.lastActivity.toDate() : new Date(),
           } as Employee
         })
         setEmployees(employeesData)
@@ -145,7 +145,7 @@ export default function EmployeesPage() {
            return {
              ...data,
              id: doc.id,
-             lastActivity: (data.lastActivity as Timestamp)?.toDate() ?? new Date(),
+             lastActivity: data.lastActivity instanceof Timestamp ? data.lastActivity.toDate() : new Date(),
            } as Employee;
         });
         setEmployees(employeesData)
