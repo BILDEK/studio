@@ -1,18 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  query,
-  writeBatch,
-  Timestamp,
-} from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import type { Timestamp } from "firebase/firestore"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -68,17 +57,17 @@ export interface Employee {
   avatar: string
   role: string
   status: "Active" | "On Leave" | "Inactive"
-  lastActivity: string | Timestamp | null
+  lastActivity: string
 }
 
-const sampleEmployees = [
+const initialEmployees: Omit<Employee, "id">[] = [
   {
     name: "Jane Doe",
     email: "jane.doe@example.com",
     role: "Project Manager",
     status: "Active",
     avatar: `https://placehold.co/100x100.png`,
-    lastActivity: Timestamp.now(),
+    lastActivity: new Date().toLocaleDateString(),
   },
   {
     name: "John Smith",
@@ -86,7 +75,7 @@ const sampleEmployees = [
     role: "Lead Developer",
     status: "Active",
     avatar: `https://placehold.co/100x100.png`,
-    lastActivity: Timestamp.now(),
+    lastActivity: new Date().toLocaleDateString(),
   },
   {
     name: "Peter Jones",
@@ -94,7 +83,7 @@ const sampleEmployees = [
     role: "UX Designer",
     status: "On Leave",
     avatar: `https://placehold.co/100x100.png`,
-    lastActivity: Timestamp.now(),
+    lastActivity: new Date().toLocaleDateString(),
   },
 ]
 
@@ -109,117 +98,53 @@ export default function EmployeesPage() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  const seedDatabase = async () => {
-    const batch = writeBatch(db)
-    sampleEmployees.forEach((employee) => {
-      const docRef = doc(collection(db, "test0"))
-      batch.set(docRef, employee)
-    })
-    await batch.commit()
-  }
-
-  const fetchEmployees = async () => {
-    setIsLoading(true)
-    const q = query(collection(db, "test0"))
-    const querySnapshot = await getDocs(q)
-
-    if (querySnapshot.empty) {
-      await seedDatabase()
-      // Refetch after seeding
-      const newQuerySnapshot = await getDocs(q);
-      const employeesData = newQuerySnapshot.docs.map((doc) => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          name: data.name,
-          email: data.email,
-          avatar: data.avatar || `https://placehold.co/100x100.png`,
-          role: data.role,
-          status: data.status,
-          lastActivity: data.lastActivity,
-        }
-      }) as Employee[]
-      setEmployees(employeesData)
-    } else {
-      const employeesData = querySnapshot.docs.map((doc) => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          name: data.name,
-          email: data.email,
-          avatar: data.avatar || `https://placehold.co/100x100.png`,
-          role: data.role,
-          status: data.status,
-          lastActivity: data.lastActivity,
-        }
-      }) as Employee[]
-      setEmployees(employeesData)
-    }
-
-    setIsLoading(false)
-  }
-
   useEffect(() => {
-    fetchEmployees()
+    // Simulate fetching data
+    setTimeout(() => {
+      setEmployees(initialEmployees.map((e, i) => ({ ...e, id: `emp-${i + 1}` })))
+      setIsLoading(false)
+    }, 1000)
   }, [])
 
   const handleAddEmployee = async (
     newEmployeeData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
   ) => {
-    const newEmployee = {
+    const newEmployee: Employee = {
       ...newEmployeeData,
+      id: `emp-${employees.length + 1}`,
       avatar: `https://placehold.co/100x100.png`,
       status: "Active",
-      lastActivity: Timestamp.now(),
+      lastActivity: new Date().toLocaleDateString(),
     }
-    try {
-      await addDoc(collection(db, "test0"), newEmployee)
-      fetchEmployees() // Refetch to get the new list with ID
-      setIsAddOpen(false)
-    } catch (error) {
-      console.error("Error adding employee: ", error)
-    }
+    setEmployees([...employees, newEmployee]);
+    setIsAddOpen(false)
   }
 
   const handleEditEmployee = async (
     id: string,
     updatedData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">
   ) => {
-    if (!id) return
-    const employeeDocRef = doc(db, "test0", id)
-    try {
-      await updateDoc(employeeDocRef, {
-        ...updatedData,
-      })
-      fetchEmployees()
-      setIsEditOpen(false)
-    } catch (error) {
-      console.error("Error updating employee: ", error)
-    }
+     setEmployees(
+      employees.map((emp) =>
+        emp.id === id ? { ...emp, ...updatedData } : emp
+      )
+    )
+    setIsEditOpen(false)
   }
 
   const handleDeleteEmployee = async () => {
     if (!selectedEmployee) return
-    try {
-      await deleteDoc(doc(db, "test0", selectedEmployee.id))
-      fetchEmployees()
-      setIsDeleteAlertOpen(false)
-    } catch (error) {
-      console.error("Error deleting employee: ", error)
-    }
+    setEmployees(employees.filter((emp) => emp.id !== selectedEmployee.id))
+    setIsDeleteAlertOpen(false)
   }
 
   const handleSetStatus = async (
     id: string,
     status: "Active" | "On Leave" | "Inactive"
   ) => {
-    const employeeDocRef = doc(db, "test0", id)
-    try {
-      await updateDoc(employeeDocRef, { status })
-      fetchEmployees()
-    } catch (error) {
-      console.error("Error updating status: ", error)
-    }
+    setEmployees(
+      employees.map((emp) => (emp.id === id ? { ...emp, status } : emp))
+    )
   }
 
   const getStatusBadge = (status: string) => {
@@ -251,17 +176,6 @@ export default function EmployeesPage() {
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
-  }
-  
-  const formatTimestamp = (ts: any) => {
-    if (!ts) return 'N/A';
-    if (ts instanceof Timestamp) {
-      return ts.toDate().toLocaleDateString();
-    }
-    if (typeof ts === 'string') {
-      return new Date(ts).toLocaleDateString();
-    }
-    return 'Invalid Date';
   }
 
   return (
@@ -348,9 +262,7 @@ export default function EmployeesPage() {
                       </TableCell>
                       <TableCell>{employee.role}</TableCell>
                       <TableCell>{getStatusBadge(employee.status)}</TableCell>
-                      <TableCell>
-                        {formatTimestamp(employee.lastActivity)}
-                      </TableCell>
+                      <TableCell>{employee.lastActivity}</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -428,10 +340,7 @@ export default function EmployeesPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="h-24 text-center"
-                    >
+                    <TableCell colSpan={5} className="h-24 text-center">
                       No employees found.
                     </TableCell>
                   </TableRow>
@@ -494,5 +403,3 @@ export default function EmployeesPage() {
     </AppLayout>
   )
 }
-
-    
