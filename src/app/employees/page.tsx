@@ -9,7 +9,7 @@ import {
   deleteDoc,
   doc,
   query,
-  orderBy,
+  writeBatch,
   Timestamp,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -71,6 +71,33 @@ export interface Employee {
   lastActivity: string | Timestamp | null
 }
 
+const sampleEmployees = [
+  {
+    name: "Jane Doe",
+    email: "jane.doe@example.com",
+    role: "Project Manager",
+    status: "Active",
+    avatar: `https://placehold.co/100x100.png`,
+    lastActivity: Timestamp.now(),
+  },
+  {
+    name: "John Smith",
+    email: "john.smith@example.com",
+    role: "Lead Developer",
+    status: "Active",
+    avatar: `https://placehold.co/100x100.png`,
+    lastActivity: Timestamp.now(),
+  },
+  {
+    name: "Peter Jones",
+    email: "peter.jones@example.com",
+    role: "UX Designer",
+    status: "On Leave",
+    avatar: `https://placehold.co/100x100.png`,
+    lastActivity: Timestamp.now(),
+  },
+]
+
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
@@ -82,23 +109,53 @@ export default function EmployeesPage() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  const seedDatabase = async () => {
+    const batch = writeBatch(db)
+    sampleEmployees.forEach((employee) => {
+      const docRef = doc(collection(db, "test0"))
+      batch.set(docRef, employee)
+    })
+    await batch.commit()
+  }
+
   const fetchEmployees = async () => {
     setIsLoading(true)
-    const q = query(collection(db, "test0")) // Removed sorting by non-existent field
+    const q = query(collection(db, "test0"))
     const querySnapshot = await getDocs(q)
-    const employeesData = querySnapshot.docs.map((doc) => {
-      const data = doc.data()
-      return {
-        id: doc.id,
-        name: data.name,
-        email: data.email,
-        avatar: data.avatar || `https://placehold.co/100x100.png`, // Add default avatar
-        role: data.role,
-        status: data.status,
-        lastActivity: data.lastActivity ? data.lastActivity.toDate().toISOString() : null, // Handle null lastActivity
-      }
-    }) as Employee[]
-    setEmployees(employeesData)
+
+    if (querySnapshot.empty) {
+      await seedDatabase()
+      // Refetch after seeding
+      const newQuerySnapshot = await getDocs(q);
+      const employeesData = newQuerySnapshot.docs.map((doc) => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          name: data.name,
+          email: data.email,
+          avatar: data.avatar || `https://placehold.co/100x100.png`,
+          role: data.role,
+          status: data.status,
+          lastActivity: data.lastActivity,
+        }
+      }) as Employee[]
+      setEmployees(employeesData)
+    } else {
+      const employeesData = querySnapshot.docs.map((doc) => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          name: data.name,
+          email: data.email,
+          avatar: data.avatar || `https://placehold.co/100x100.png`,
+          role: data.role,
+          status: data.status,
+          lastActivity: data.lastActivity,
+        }
+      }) as Employee[]
+      setEmployees(employeesData)
+    }
+
     setIsLoading(false)
   }
 
@@ -195,6 +252,17 @@ export default function EmployeesPage() {
         return <Badge variant="secondary">{status}</Badge>
     }
   }
+  
+  const formatTimestamp = (ts: any) => {
+    if (!ts) return 'N/A';
+    if (ts instanceof Timestamp) {
+      return ts.toDate().toLocaleDateString();
+    }
+    if (typeof ts === 'string') {
+      return new Date(ts).toLocaleDateString();
+    }
+    return 'Invalid Date';
+  }
 
   return (
     <AppLayout>
@@ -281,11 +349,7 @@ export default function EmployeesPage() {
                       <TableCell>{employee.role}</TableCell>
                       <TableCell>{getStatusBadge(employee.status)}</TableCell>
                       <TableCell>
-                        {employee.lastActivity ? new Date(
-                          typeof employee.lastActivity === "string"
-                            ? employee.lastActivity
-                            : (employee.lastActivity as Timestamp).toDate()
-                        ).toLocaleDateString() : 'N/A'}
+                        {formatTimestamp(employee.lastActivity)}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -430,3 +494,5 @@ export default function EmployeesPage() {
     </AppLayout>
   )
 }
+
+    
