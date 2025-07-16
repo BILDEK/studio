@@ -64,7 +64,7 @@ function OptimizerPageContent() {
 
   return (
     <div className="grid gap-8 lg:grid-cols-5">
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -81,7 +81,7 @@ function OptimizerPageContent() {
         </Card>
       </div>
 
-      <div className="lg:col-span-3">
+      <div className="lg:col-span-2">
         <OptimizerResult state={state} />
       </div>
     </div>
