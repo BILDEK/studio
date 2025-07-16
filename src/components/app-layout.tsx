@@ -112,7 +112,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </Sidebar>
       <SidebarInset>
         <header className="flex h-14 items-center gap-4 border-b bg-card px-4 sm:px-6">
-          <SidebarTrigger className="md:hidden" asChild>
+          <SidebarTrigger className="md:hidden">
             <Button size="icon" variant="outline">
               <PanelLeft className="h-5 w-5" />
               <span className="sr-only">Toggle sidebar</span>
