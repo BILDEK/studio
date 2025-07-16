@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table"
 import { MoreHorizontal, PlusCircle } from "lucide-react"
 import { AddEmployeeForm } from "@/components/add-employee-form"
+import { EditEmployeeForm } from "@/components/edit-employee-form"
 
 const initialEmployees = [
   {
@@ -87,6 +88,20 @@ export default function EmployeesPage() {
     }
     setEmployees((prev) => [newEmployee, ...prev])
   }
+
+  const handleEditEmployee = (
+    originalEmail: string,
+    updatedData: Omit<Employee, "avatar" | "status" | "lastActivity">
+  ) => {
+    setEmployees((prev) =>
+      prev.map((employee) =>
+        employee.email === originalEmail
+          ? { ...employee, ...updatedData }
+          : employee
+      )
+    )
+  }
+
 
   return (
     <AppLayout>
@@ -166,7 +181,19 @@ export default function EmployeesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
+                           <EditEmployeeForm
+                            employee={{
+                              name: employee.name,
+                              email: employee.email,
+                              role: employee.role,
+                              originalEmail: employee.email,
+                            }}
+                            onEditEmployee={handleEditEmployee}
+                          >
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              Edit
+                            </DropdownMenuItem>
+                          </EditEmployeeForm>
                           <DropdownMenuItem>View Details</DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive">
                             Deactivate
