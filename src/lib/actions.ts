@@ -1,3 +1,4 @@
+
 "use server"
 
 import {
@@ -10,11 +11,17 @@ import { z } from "zod"
 const ActionInputSchema = z.object({
   workflowDescription: z
     .string()
-    .min(20, "Please provide a more detailed workflow description (at least 20 characters)."),
-  businessGoals: z.string().min(20, "Please provide more detailed business goals (at least 20 characters)."),
+    .describe('Detailed description of the existing workflow to be optimized.'),
+  businessGoals: z
+    .string()
+    .describe(
+      'Description of the overall business goals the workflow should achieve.'
+    ),
   currentChallenges: z
     .string()
-    .min(20, "Please describe your current challenges in more detail (at least 20 characters)."),
+    .describe(
+      'Description of the current challenges and bottlenecks in the workflow.'
+    ),
 })
 
 export type OptimizerActionState = {
