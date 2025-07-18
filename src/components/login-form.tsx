@@ -16,8 +16,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
-import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
-import { Terminal } from "lucide-react"
 
 export function LoginForm() {
   const router = useRouter()
@@ -27,8 +25,8 @@ export function LoginForm() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    // Simulate authentication
-    if (email === "jane.doe@example.com" && password.length > 0) {
+    // Simulate authentication with specific credentials
+    if (email === "0bildek0@gmail.com" && password === "123") {
       router.push("/dashboard")
     } else {
       toast({
