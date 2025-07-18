@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { VerdantFlowLogo } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,15 +15,28 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
+import { Terminal } from "lucide-react"
 
 export function LoginForm() {
   const router = useRouter()
+  const { toast } = useToast()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real app, you'd have authentication logic here.
-    // For this scaffold, we'll just navigate to the dashboard.
-    router.push("/dashboard")
+    // Simulate authentication
+    if (email === "jane.doe@example.com" && password.length > 0) {
+      router.push("/dashboard")
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Authentication Failed",
+        description: "Invalid email or password. Please try again.",
+      })
+    }
   }
 
   return (
@@ -46,6 +60,8 @@ export function LoginForm() {
               placeholder="name@example.com"
               required
               autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="grid gap-2">
@@ -58,7 +74,13 @@ export function LoginForm() {
                 Forgot your password?
               </Link>
             </div>
-            <Input id="password" type="password" required />
+            <Input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
