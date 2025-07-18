@@ -22,19 +22,25 @@ import { useToast } from "@/hooks/use-toast"
 export function LoginForm() {
   const router = useRouter()
   const { toast } = useToast()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [email, setEmail] = useState("0bildek0@gmail.com")
+  const [password, setPassword] = useState("123")
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Simulate authentication with specific credentials
-    if (email === "0bildek0@gmail.com" && password === "123") {
+    try {
+      await signInWithEmailAndPassword(auth, email, password)
       router.push("/dashboard")
-    } else {
+    } catch (error: any) {
+      let errorMessage = "An unexpected error occurred. Please try again."
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid email or password. Please try again."
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Please enter a valid email address."
+      }
       toast({
         variant: "destructive",
         title: "Authentication Failed",
-        description: "Invalid email or password. Please try again.",
+        description: errorMessage,
       })
     }
   }
