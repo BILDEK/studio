@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 import { VerdantFlowLogo } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import {
