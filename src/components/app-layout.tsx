@@ -65,13 +65,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
       if (currentUser) {
         setUser(currentUser)
         try {
-          const q = query(collection(db, "test0"), where("email", "==", currentUser.email));
+          const q = query(collection(db, "employees"), where("email", "==", currentUser.email));
           const querySnapshot = await getDocs(q);
           if (!querySnapshot.empty) {
             const userDoc = querySnapshot.docs[0];
             setUserName(userDoc.data().name);
           } else {
-             setUserName(currentUser.displayName); // Fallback to display name
+             const test0q = query(collection(db, "test0"), where("email", "==", currentUser.email));
+             const test0querySnapshot = await getDocs(test0q);
+             if (!test0querySnapshot.empty) {
+                 const userDoc = test0querySnapshot.docs[0];
+                 setUserName(userDoc.data().name);
+             } else {
+                setUserName(currentUser.displayName);
+             }
           }
         } catch (error) {
           console.error("Error fetching user name from Firestore:", error);
@@ -80,10 +87,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
       } else {
         setUser(null)
         setUserName(null);
+        router.push("/");
       }
     })
     return () => unsubscribe()
-  }, [])
+  }, [router])
 
   const handleLogout = async () => {
     try {
@@ -147,7 +155,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </Link>
               </SidebarMenuItem>
                <SidebarMenuItem>
-                <Link href="/profile?tab=settings">
+                <Link href="/profile?tab=appearance">
                   <SidebarMenuButton
                     isActive={pathname === "/settings"}
                     tooltip="Settings"
@@ -180,7 +188,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => router.push("/profile?tab=settings")}>
+                <DropdownMenuItem onSelect={() => router.push("/profile?tab=appearance")}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>

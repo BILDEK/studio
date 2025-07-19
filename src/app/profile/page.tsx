@@ -2,7 +2,7 @@
 "use client"
 
 import { useEffect, useState, Suspense } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import {
   type User,
   onAuthStateChanged,
@@ -50,7 +50,7 @@ function AccountSettings() {
 
         try {
           const q = query(
-            collection(db, "test0"),
+            collection(db, "employees"),
             where("email", "==", currentUser.email)
           )
           const querySnapshot = await getDocs(q)
@@ -60,7 +60,18 @@ function AccountSettings() {
             setEmployeeDocId(userDoc.id)
             setName(userDoc.data().name || "")
           } else {
-            setName(currentUser.displayName || "") // Fallback
+             const test0q = query(
+              collection(db, "test0"),
+              where("email", "==", currentUser.email)
+            )
+            const test0querySnapshot = await getDocs(test0q)
+             if (!test0querySnapshot.empty) {
+                const userDoc = test0querySnapshot.docs[0]
+                setEmployeeDocId(userDoc.id)
+                setName(userDoc.data().name || "")
+             } else {
+                setName(currentUser.displayName || "")
+             }
           }
         } catch (error) {
           console.error("Error fetching user name from Firestore:", error)
@@ -92,7 +103,7 @@ function AccountSettings() {
 
     try {
       if (employeeDocId) {
-        const userDocRef = doc(db, "test0", employeeDocId)
+        const userDocRef = doc(db, "employees", employeeDocId)
         await updateDoc(userDocRef, { name: name })
         toast({
           title: "Success",
@@ -236,32 +247,32 @@ function AccountSettings() {
   )
 }
 
-function ThemeSettings() {
+function AppearanceSettings() {
   const { setTheme } = useTheme()
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Theme Settings</CardTitle>
+        <CardTitle>Appearance</CardTitle>
         <CardDescription>Select a theme for your dashboard.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 sm:flex-row">
         <Button
-          variant="outline"
+          variant="theme"
           className="w-full justify-center"
           onClick={() => setTheme("light")}
         >
           <Sun className="mr-2 h-4 w-4" /> Light
         </Button>
         <Button
-          variant="outline"
+          variant="theme"
           className="w-full justify-center"
           onClick={() => setTheme("dark")}
         >
           <Moon className="mr-2 h-4 w-4" /> Dark
         </Button>
         <Button
-          variant="outline"
+          variant="theme"
           className="w-full justify-center"
           onClick={() => setTheme("cyber-punk")}
         >
@@ -274,12 +285,17 @@ function ThemeSettings() {
 
 function ProfilePageContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const tab = searchParams.get("tab") || "account"
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     setIsLoading(false)
   }, [])
+  
+  const onTabChange = (value: string) => {
+    router.push(`/profile?tab=${value}`, { scroll: false });
+  };
 
   if (isLoading) {
     return (
@@ -294,19 +310,19 @@ function ProfilePageContent() {
       <div>
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-muted-foreground">
-          Manage your account settings and preferences.
+          Manage your account settings and appearance preferences.
         </p>
       </div>
-      <Tabs defaultValue={tab} className="w-full">
+      <Tabs defaultValue={tab} value={tab} onValueChange={onTabChange} className="w-full">
         <TabsList>
           <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="settings">Appearance</TabsTrigger>
+          <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
         <TabsContent value="account" className="mt-6">
           <AccountSettings />
         </TabsContent>
-        <TabsContent value="settings" className="mt-6">
-          <ThemeSettings />
+        <TabsContent value="appearance" className="mt-6">
+          <AppearanceSettings />
         </TabsContent>
       </Tabs>
     </div>
