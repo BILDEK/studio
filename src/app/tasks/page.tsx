@@ -1,3 +1,21 @@
+
+"use client"
+
+import { useState, useEffect } from "react"
+import {
+  collection,
+  getDocs,
+  addDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
+  writeBatch,
+  Timestamp,
+  query,
+  orderBy,
+} from "firebase/firestore"
+import { db } from "@/lib/firebase"
+
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -5,69 +23,103 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { PlusCircle } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { PlusCircle, MoreHorizontal, Edit, Trash2 } from "lucide-react"
+import { AddTaskForm, TaskFormValues } from "@/components/add-task-form"
+import type { Employee } from "@/app/employees/page"
 
-const tasks = {
-  todo: [
-    {
-      id: "task-1",
-      title: "Finalize Q3 Marketing Campaign",
-      assignee: "Noah Brown",
-      dueDate: "2024-08-15",
-      priority: "High",
-      avatar: "https://placehold.co/100x100/A7F3D0/064E3B.png",
-    },
-    {
-      id: "task-2",
-      title: "Develop new landing page mockups",
-      assignee: "Emma Williams",
-      dueDate: "2024-08-10",
-      priority: "Medium",
-      avatar: "https://placehold.co/100x100/34D399/065F46.png",
-    },
-  ],
-  inProgress: [
-    {
-      id: "task-3",
-      title: "Refactor authentication module",
-      assignee: "Liam Johnson",
-      dueDate: "2024-08-05",
-      priority: "High",
-      avatar: "https://placehold.co/100x100/6EE7B7/047857.png",
-    },
-  ],
-  done: [
-    {
-      id: "task-4",
-      title: "Plan project kickoff meeting",
-      assignee: "Olivia Martin",
-      dueDate: "2024-07-28",
-      priority: "Low",
-      avatar: "https://placehold.co/100x100/A3E635/4D7C0F.png",
-    },
-    {
-      id: "task-5",
-      title: "Onboard new marketing intern",
-      assignee: "Noah Brown",
-      dueDate: "2024-07-25",
-      priority: "Medium",
-      avatar: "https://placehold.co/100x100/A7F3D0/064E3B.png",
-    },
-  ],
+export type TaskStatus = "todo" | "inProgress" | "done"
+
+export interface Task {
+  id: string
+  title: string
+  assignee: string
+  dueDate: Date
+  priority: "High" | "Medium" | "Low"
+  avatar: string
+  status: TaskStatus
 }
+
+const sampleTasks = [
+  {
+    title: "Finalize Q3 Marketing Campaign",
+    assignee: "Noah Brown",
+    dueDate: new Date("2024-08-15"),
+    priority: "High" as const,
+    avatar: "https://placehold.co/100x100/A7F3D0/064E3B.png",
+    status: "todo" as const,
+  },
+  {
+    title: "Develop new landing page mockups",
+    assignee: "Peter Jones",
+    dueDate: new Date("2024-08-10"),
+    priority: "Medium" as const,
+    avatar: "https://placehold.co/100x100/34D399/065F46.png",
+    status: "todo" as const,
+  },
+  {
+    title: "Refactor authentication module",
+    assignee: "John Smith",
+    dueDate: new Date("2024-08-05"),
+    priority: "High" as const,
+    avatar: "https://placehold.co/100x100/6EE7B7/047857.png",
+    status: "inProgress" as const,
+  },
+  {
+    title: "Plan project kickoff meeting",
+    assignee: "Jane Doe",
+    dueDate: new Date("2024-07-28"),
+    priority: "Low" as const,
+    avatar: "https://placehold.co/100x100/A3E635/4D7C0F.png",
+    status: "done" as const,
+  },
+  {
+    title: "Onboard new marketing intern",
+    assignee: "Noah Brown",
+    dueDate: new Date("2024-07-25"),
+    priority: "Medium" as const,
+    avatar: "https://placehold.co/100x100/A7F3D0/064E3B.png",
+    status: "done" as const,
+  },
+]
+
+const tasksCollectionRef = collection(db, "tasks")
+const employeesCollectionRef = collection(db, "employees")
 
 const getPriorityBadge = (priority: string) => {
   switch (priority) {
     case "High":
       return <Badge variant="destructive">High</Badge>
     case "Medium":
-      return <Badge className="bg-yellow-500 hover:bg-yellow-500/80">Medium</Badge>
+      return (
+        <Badge className="bg-yellow-500 hover:bg-yellow-500/80">Medium</Badge>
+      )
     case "Low":
       return <Badge variant="secondary">Low</Badge>
     default:
@@ -75,36 +127,212 @@ const getPriorityBadge = (priority: string) => {
   }
 }
 
-const TaskCard = ({ task }: { task: (typeof tasks.todo)[0] }) => (
-  <Card>
-    <CardHeader>
-      <CardTitle className="text-base">{task.title}</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <Avatar className="h-6 w-6">
-            <AvatarImage src={task.avatar} data-ai-hint="profile picture" />
-            <AvatarFallback>{task.assignee.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <span>{task.assignee}</span>
-        </div>
-        <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
-      </div>
-    </CardContent>
-    <CardFooter>
-      {getPriorityBadge(task.priority)}
-    </CardFooter>
-  </Card>
-)
-
 export default function TasksPage() {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+
+  const fetchTasksAndEmployees = async () => {
+    setIsLoading(true)
+    try {
+      // Fetch employees
+      const employeeSnapshot = await getDocs(employeesCollectionRef)
+      const employeesData = employeeSnapshot.docs.map(
+        (doc) => ({ ...doc.data(), id: doc.id } as Employee)
+      )
+      setEmployees(employeesData)
+
+      // Fetch tasks
+      const taskSnapshot = await getDocs(query(tasksCollectionRef, orderBy("dueDate", "desc")))
+      if (taskSnapshot.empty) {
+        // Populate with sample data if empty
+        const batch = writeBatch(db)
+        sampleTasks.forEach((task) => {
+          const newDocRef = doc(tasksCollectionRef)
+          batch.set(newDocRef, {
+            ...task,
+            dueDate: Timestamp.fromDate(task.dueDate),
+          })
+        })
+        await batch.commit()
+        await fetchTasksAndEmployees() // Refetch after populating
+        return
+      }
+
+      const tasksData = taskSnapshot.docs.map((doc) => {
+        const data = doc.data()
+        return {
+          ...data,
+          id: doc.id,
+          dueDate: (data.dueDate as Timestamp).toDate(),
+        } as Task
+      })
+      setTasks(tasksData)
+    } catch (error) {
+      console.error("Error fetching data:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchTasksAndEmployees()
+  }, [])
+
+  const handleAddTask = async (taskData: TaskFormValues) => {
+    const assignee = employees.find((e) => e.id === taskData.assigneeId)
+    if (!assignee) {
+      console.error("Assignee not found")
+      return
+    }
+
+    try {
+      const newTask = {
+        title: taskData.title,
+        assignee: assignee.name,
+        avatar: assignee.avatar,
+        dueDate: Timestamp.fromDate(new Date(taskData.dueDate)),
+        priority: taskData.priority,
+        status: "todo",
+      }
+      await addDoc(tasksCollectionRef, newTask)
+      fetchTasksAndEmployees()
+      setIsAddOpen(false)
+    } catch (error) {
+      console.error("Error adding task:", error)
+    }
+  }
+
+  const handleUpdateStatus = async (taskId: string, status: TaskStatus) => {
+    try {
+      const taskDoc = doc(db, "tasks", taskId)
+      await updateDoc(taskDoc, { status })
+      fetchTasksAndEmployees()
+    } catch (error) {
+      console.error("Error updating task status:", error)
+    }
+  }
+  
+  const handleDeleteTask = async () => {
+    if (!selectedTask) return
+    try {
+      await deleteDoc(doc(db, "tasks", selectedTask.id))
+      fetchTasksAndEmployees()
+      setIsDeleteAlertOpen(false)
+      setSelectedTask(null)
+    } catch (error) {
+        console.error("Error deleting task:", error)
+    }
+  }
+
+  const TaskCard = ({ task }: { task: Task }) => (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between">
+          <CardTitle className="text-base font-medium leading-tight">
+            {task.title}
+          </CardTitle>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 -mr-2 -mt-2"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem disabled>
+                <Edit className="mr-2 h-4 w-4" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Move to</DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem
+                      onClick={() => handleUpdateStatus(task.id, "todo")}
+                    >
+                      To Do
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleUpdateStatus(task.id, "inProgress")}
+                    >
+                      In Progress
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleUpdateStatus(task.id, "done")}
+                    >
+                      Done
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onSelect={() => {
+                  setSelectedTask(task)
+                  setIsDeleteAlertOpen(true)
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
+      <CardContent className="py-2">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={task.avatar} data-ai-hint="profile picture" />
+              <AvatarFallback>{task.assignee.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <span>{task.assignee}</span>
+          </div>
+          <span>
+            Due: {new Date(task.dueDate).toLocaleDateString()}
+          </span>
+        </div>
+      </CardContent>
+      <CardFooter className="py-2">
+        {getPriorityBadge(task.priority)}
+      </CardFooter>
+    </Card>
+  )
+
+  const renderTaskColumn = (status: TaskStatus, title: string) => {
+    const filteredTasks = tasks.filter((task) => task.status === status)
+    return (
+      <TabsContent value={status}>
+        {isLoading ? (
+            <div className="text-center p-8">Loading tasks...</div>
+        ) : filteredTasks.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredTasks.map((task) => (
+              <TaskCard key={task.id} task={task} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-muted-foreground p-8">
+            No tasks in "{title}".
+          </div>
+        )}
+      </TabsContent>
+    )
+  }
+
   return (
     <AppLayout>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Tasks</h1>
-          <Button>
+          <Button onClick={() => setIsAddOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Task
           </Button>
         </div>
@@ -115,29 +343,44 @@ export default function TasksPage() {
             <TabsTrigger value="inProgress">In Progress</TabsTrigger>
             <TabsTrigger value="done">Done</TabsTrigger>
           </TabsList>
-          <TabsContent value="todo">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {tasks.todo.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
-          </TabsContent>
-          <TabsContent value="inProgress">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {tasks.inProgress.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
-          </TabsContent>
-          <TabsContent value="done">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {tasks.done.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
-          </TabsContent>
+          {renderTaskColumn("todo", "To Do")}
+          {renderTaskColumn("inProgress", "In Progress")}
+          {renderTaskColumn("done", "Done")}
         </Tabs>
       </div>
+      
+      <AddTaskForm
+        isOpen={isAddOpen}
+        onOpenChange={setIsAddOpen}
+        onAddTask={handleAddTask}
+        employees={employees}
+      />
+      
+      {selectedTask && (
+        <AlertDialog
+            open={isDeleteAlertOpen}
+            onOpenChange={setIsDeleteAlertOpen}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the task "{selectedTask.title}".
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteTask}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+      )}
+
     </AppLayout>
   )
 }
