@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { formatDistanceToNow } from 'date-fns'
+import { migrateTest0ToEmployees } from "@/lib/actions"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -105,7 +106,7 @@ const sampleEmployees = [
   },
 ]
 
-const employeesCollectionRef = collection(db, "test0")
+const employeesCollectionRef = collection(db, "employees")
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -181,7 +182,7 @@ export default function EmployeesPage() {
 
   const handleEditEmployee = async (id: string, updatedData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">) => {
     try {
-      const employeeDoc = doc(db, "test0", id)
+      const employeeDoc = doc(db, "employees", id)
       await updateDoc(employeeDoc, updatedData)
       fetchEmployees()
       setIsEditOpen(false)
@@ -193,7 +194,7 @@ export default function EmployeesPage() {
   const handleDeleteEmployee = async () => {
     if (!selectedEmployee) return
     try {
-      const employeeDoc = doc(db, "test0", selectedEmployee.id)
+      const employeeDoc = doc(db, "employees", selectedEmployee.id)
       await deleteDoc(employeeDoc)
       fetchEmployees()
       setIsDeleteAlertOpen(false)
@@ -204,7 +205,7 @@ export default function EmployeesPage() {
 
   const handleSetStatus = async (id: string, status: "Active" | "On Leave" | "Inactive") => {
     try {
-      const employeeDoc = doc(db, "test0", id)
+      const employeeDoc = doc(db, "employees", id)
       await updateDoc(employeeDoc, { status })
       fetchEmployees()
     } catch (error) {
@@ -237,9 +238,14 @@ export default function EmployeesPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Employees</h1>
-          <Button onClick={() => setIsAddOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Employee
-          </Button>
+          <div>
+            <Button onClick={() => migrateTest0ToEmployees()} className="mr-4">
+              Migrate Data
+            </Button>
+            <Button onClick={() => setIsAddOpen(true)}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Employee
+            </Button>
+          </div>
         </div>
         <Card>
           <CardHeader>
