@@ -1,11 +1,9 @@
-import type { Metadata } from 'next'
-import { Toaster } from "@/components/ui/toaster"
-import './globals.css'
 
-export const metadata: Metadata = {
-  title: 'VerdantFlow',
-  description: 'A comprehensive business management app for customer use.',
-}
+'use client'
+
+import { Toaster } from "@/components/ui/toaster"
+import { ThemeProvider } from "next-themes"
+import "./globals.css"
 
 export default function RootLayout({
   children,
@@ -15,6 +13,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <title>VerdantFlow</title>
+        <meta name="description" content="A comprehensive business management app for customer use." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -23,8 +23,15 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        {children}
-        <Toaster />
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   )

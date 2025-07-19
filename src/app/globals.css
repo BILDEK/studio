@@ -73,6 +73,42 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 120 39.4% 54.1%;
   }
+
+  .cyber-punk {
+    --background: 259 85% 6%;
+    --foreground: 180 100% 88%;
+    --card: 259 85% 6%;
+    --card-foreground: 180 100% 88%;
+    --popover: 259 85% 6%;
+    --popover-foreground: 180 100% 88%;
+    --primary: 180 95% 50%;
+    --primary-foreground: 259 85% 6%;
+    --secondary: 300 100% 50%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 259 50% 15%;
+    --muted-foreground: 259 15% 65%;
+    --accent: 300 100% 70%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 0%;
+    --border: 180 95% 50%;
+    --input: 259 70% 12%;
+    --ring: 180 95% 60%;
+    --radius: 0.5rem;
+    --chart-1: 180 95% 50%;
+    --chart-2: 300 100% 50%;
+    --chart-3: 50 100% 50%;
+    --chart-4: 200 100% 50%;
+    --chart-5: 330 100% 50%;
+    --sidebar-background: 259 85% 6%;
+    --sidebar-foreground: 180 100% 88%;
+    --sidebar-primary: 180 95% 50%;
+    --sidebar-primary-foreground: 259 85% 6%;
+    --sidebar-accent: 259 70% 12%;
+    --sidebar-accent-foreground: 180 100% 88%;
+    --sidebar-border: 180 95% 50%;
+    --sidebar-ring: 180 95% 60%;
+  }
 }
 
 @layer base {

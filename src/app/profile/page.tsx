@@ -11,6 +11,7 @@ import {
 } from "firebase/auth"
 import { auth, db } from "@/lib/firebase"
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore"
+import { useTheme } from "next-themes"
 
 
 import { AppLayout } from "@/components/app-layout"
@@ -27,7 +28,33 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, Moon, Sun, Monitor } from "lucide-react"
+
+function ThemeSelector() {
+    const { setTheme } = useTheme()
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Theme Settings</CardTitle>
+                <CardDescription>
+                    Select a theme for your dashboard.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col sm:flex-row gap-4">
+                <Button variant="outline" className="w-full justify-center" onClick={() => setTheme("light")}>
+                    <Sun className="mr-2 h-4 w-4" /> Light
+                </Button>
+                <Button variant="outline" className="w-full justify-center" onClick={() => setTheme("dark")}>
+                    <Moon className="mr-2 h-4 w-4" /> Dark
+                </Button>
+                 <Button variant="outline" className="w-full justify-center" onClick={() => setTheme("cyber-punk")}>
+                    <Monitor className="mr-2 h-4 w-4" /> Cyberpunk
+                </Button>
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function ProfilePage() {
   const { toast } = useToast()
@@ -225,6 +252,7 @@ export default function ProfilePage() {
             </form>
           </CardContent>
         </Card>
+        <ThemeSelector />
       </div>
     </AppLayout>
   )
