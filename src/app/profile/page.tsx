@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, Suspense } from "react"
@@ -12,7 +11,6 @@ import {
 } from "firebase/auth"
 import { auth, db } from "@/lib/firebase"
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore"
-import { useTheme } from "next-themes"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -249,7 +247,22 @@ function AccountSettings() {
 }
 
 function AppearanceSettings() {
-  const { theme, setTheme } = useTheme()
+  const [activeTheme, setActiveTheme] = useState("")
+
+  useEffect(() => {
+    const currentClass = document.documentElement.className
+    if (currentClass === "dark" || currentClass === "cyber-punk") {
+      setActiveTheme(currentClass)
+    } else {
+      setActiveTheme("light")
+    }
+  }, [])
+
+  const handleThemeChange = (newTheme: string) => {
+    const themeClass = newTheme === "light" ? "" : newTheme
+    document.documentElement.className = themeClass
+    setActiveTheme(newTheme)
+  }
 
   return (
     <Card>
@@ -261,24 +274,24 @@ function AppearanceSettings() {
         <Button
           variant="theme"
           className="w-full justify-center"
-          onClick={() => setTheme("light")}
-          data-state={theme === 'light' ? 'active' : 'inactive'}
+          onClick={() => handleThemeChange("light")}
+          data-state={activeTheme === "light" ? "active" : "inactive"}
         >
           <Sun className="mr-2 h-4 w-4" /> Light
         </Button>
         <Button
           variant="theme"
           className="w-full justify-center"
-          onClick={() => setTheme("dark")}
-          data-state={theme === 'dark' ? 'active' : 'inactive'}
+          onClick={() => handleThemeChange("dark")}
+          data-state={activeTheme === "dark" ? "active" : "inactive"}
         >
           <Moon className="mr-2 h-4 w-4" /> Dark
         </Button>
         <Button
           variant="theme"
           className="w-full justify-center"
-          onClick={() => setTheme("cyber-punk")}
-          data-state={theme === 'cyber-punk' ? 'active' : 'inactive'}
+          onClick={() => handleThemeChange("cyber-punk")}
+          data-state={activeTheme === "cyber-punk" ? "active" : "inactive"}
         >
           <Monitor className="mr-2 h-4 w-4" /> Cyberpunk
         </Button>
