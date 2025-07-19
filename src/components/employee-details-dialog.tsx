@@ -50,6 +50,13 @@ export function EmployeeDetailsDialog({
     }
   }
 
+  const formatLastActivity = (activity: Date | string) => {
+    if (activity instanceof Date) {
+      return activity.toLocaleString();
+    }
+    return activity;
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -91,7 +98,7 @@ export function EmployeeDetailsDialog({
               Last Activity
             </span>
             <span className="col-span-2">
-              {employee.lastActivity ? employee.lastActivity.toLocaleString() : 'N/A'}
+              {formatLastActivity(employee.lastActivity)}
             </span>
           </div>
         </div>

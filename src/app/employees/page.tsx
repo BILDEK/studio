@@ -59,7 +59,7 @@ export interface Employee {
   avatar: string
   role: string
   status: "Active" | "On Leave" | "Inactive"
-  lastActivity: Date
+  lastActivity: Date | string
 }
 
 const sampleEmployees = [
@@ -125,7 +125,7 @@ export default function EmployeesPage() {
         const batch = writeBatch(db)
         sampleEmployees.forEach((employee) => {
           const newDocRef = doc(employeesCollectionRef)
-          batch.set(newDocRef, { ...employee, lastActivity: Timestamp.fromDate(employee.lastActivity) })
+          batch.set(newDocRef, { ...employee, lastActivity: Timestamp.fromDate(employee.lastActivity as Date) })
         })
         await batch.commit()
         // Fetch again after populating
@@ -135,7 +135,7 @@ export default function EmployeesPage() {
           return {
             ...data,
             id: doc.id,
-            lastActivity: data.lastActivity instanceof Timestamp ? data.lastActivity.toDate() : new Date(),
+            lastActivity: data.lastActivity instanceof Timestamp ? data.lastActivity.toDate() : (data.lastActivity || 'N/A'),
           } as Employee
         })
         setEmployees(employeesData)
@@ -145,7 +145,8 @@ export default function EmployeesPage() {
            return {
              ...data,
              id: doc.id,
-             lastActivity: data.lastActivity instanceof Timestamp ? data.lastActivity.toDate() : new Date(),
+             // Handle both Timestamp and string for lastActivity
+             lastActivity: data.lastActivity instanceof Timestamp ? data.lastActivity.toDate() : (data.lastActivity || 'N/A'),
            } as Employee;
         });
         setEmployees(employeesData)
@@ -224,6 +225,13 @@ export default function EmployeesPage() {
     }
   }
 
+  const formatLastActivity = (activity: Date | string) => {
+    if (activity instanceof Date) {
+      return `${formatDistanceToNow(activity)} ago`
+    }
+    return activity
+  }
+
   return (
     <AppLayout>
       <div className="flex flex-col gap-4">
@@ -288,7 +296,7 @@ export default function EmployeesPage() {
                       </TableCell>
                       <TableCell>{employee.role}</TableCell>
                       <TableCell>{getStatusBadge(employee.status)}</TableCell>
-                      <TableCell>{employee.lastActivity ? `${formatDistanceToNow(employee.lastActivity)} ago` : 'N/A'}</TableCell>
+                      <TableCell>{formatLastActivity(employee.lastActivity)}</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
