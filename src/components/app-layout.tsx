@@ -146,6 +146,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
+               <SidebarMenuItem>
+                <Link href="/profile?tab=settings">
+                  <SidebarMenuButton
+                    isActive={pathname === "/settings"}
+                    tooltip="Settings"
+                  >
+                    <Settings />
+                    <span>Settings</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
@@ -165,11 +176,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <DropdownMenuContent align="start" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => router.push("/profile")}>
+                <DropdownMenuItem onSelect={() => router.push("/profile?tab=account")}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => router.push("/profile")}>
+                <DropdownMenuItem onSelect={() => router.push("/profile?tab=settings")}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
