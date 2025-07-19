@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -14,6 +15,10 @@ import {
   Wand2,
 } from "lucide-react"
 import type { ReactNode } from "react"
+import { useEffect, useState } from "react"
+import { onAuthStateChanged, signOut, type User as FirebaseUser } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+
 import { VerdantFlowLogo } from "./icons"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Button } from "./ui/button"
@@ -37,6 +42,7 @@ import {
   SidebarTrigger,
   SidebarFooter
 } from "./ui/sidebar"
+import { useToast } from "@/hooks/use-toast"
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
@@ -49,6 +55,41 @@ const navItems = [
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { toast } = useToast()
+  const [user, setUser] = useState<FirebaseUser | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser)
+    })
+    return () => unsubscribe()
+  }, [])
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push("/");
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Logout Failed",
+        description: "An error occurred while logging out. Please try again.",
+      });
+    }
+  };
+
+  const getInitials = (name: string | null) => {
+    if (!name) return ""
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+  }
 
   return (
     <SidebarProvider>
@@ -92,12 +133,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto">
                    <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://placehold.co/100x100.png" alt="@user" data-ai-hint="profile picture" />
-                    <AvatarFallback>JD</AvatarFallback>
+                    <AvatarImage src={user?.photoURL || "https://placehold.co/100x100.png"} alt="@user" data-ai-hint="profile picture" />
+                    <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
                   </Avatar>
                   <div className="text-left group-data-[collapsible=icon]:hidden">
-                    <p className="font-medium text-sm">Jane Doe</p>
-                    <p className="text-xs text-muted-foreground">jane.doe@example.com</p>
+                    <p className="font-medium text-sm">{user?.displayName || "User"}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
@@ -113,7 +154,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/")}>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
