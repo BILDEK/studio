@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { PlusCircle, MoreHorizontal, Edit, Trash2 } from "lucide-react"
 import { AddTaskForm, TaskFormValues } from "@/components/add-task-form"
+import { EditTaskForm } from "@/components/edit-task-form"
 import type { Employee } from "@/app/employees/page"
 
 export type TaskStatus = "todo" | "inProgress" | "done"
@@ -60,6 +61,7 @@ export interface Task {
   id: string
   title: string
   assignee: string
+  assigneeId?: string
   dueDate: Date
   priority: "High" | "Medium" | "Low"
   avatar: string
@@ -70,6 +72,7 @@ const sampleTasks = [
   {
     title: "Finalize Q3 Marketing Campaign",
     assignee: "Noah Brown",
+    assigneeId: "", // Will be populated later
     dueDate: new Date("2024-08-15"),
     priority: "High" as const,
     avatar: "https://placehold.co/100x100/A7F3D0/064E3B.png",
@@ -78,6 +81,7 @@ const sampleTasks = [
   {
     title: "Develop new landing page mockups",
     assignee: "Peter Jones",
+    assigneeId: "",
     dueDate: new Date("2024-08-10"),
     priority: "Medium" as const,
     avatar: "https://placehold.co/100x100/34D399/065F46.png",
@@ -86,6 +90,7 @@ const sampleTasks = [
   {
     title: "Refactor authentication module",
     assignee: "John Smith",
+    assigneeId: "",
     dueDate: new Date("2024-08-05"),
     priority: "High" as const,
     avatar: "https://placehold.co/100x100/6EE7B7/047857.png",
@@ -94,6 +99,7 @@ const sampleTasks = [
   {
     title: "Plan project kickoff meeting",
     assignee: "Jane Doe",
+    assigneeId: "",
     dueDate: new Date("2024-07-28"),
     priority: "Low" as const,
     avatar: "https://placehold.co/100x100/A3E635/4D7C0F.png",
@@ -102,6 +108,7 @@ const sampleTasks = [
   {
     title: "Onboard new marketing intern",
     assignee: "Noah Brown",
+    assigneeId: "",
     dueDate: new Date("2024-07-25"),
     priority: "Medium" as const,
     avatar: "https://placehold.co/100x100/A7F3D0/064E3B.png",
@@ -132,6 +139,7 @@ export default function TasksPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddOpen, setIsAddOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
@@ -147,13 +155,15 @@ export default function TasksPage() {
 
       // Fetch tasks
       const taskSnapshot = await getDocs(query(tasksCollectionRef, orderBy("dueDate", "desc")))
-      if (taskSnapshot.empty) {
+      if (taskSnapshot.empty && employeesData.length > 0) {
         // Populate with sample data if empty
         const batch = writeBatch(db)
         sampleTasks.forEach((task) => {
+          const assignee = employeesData.find(e => e.name === task.assignee)
           const newDocRef = doc(tasksCollectionRef)
           batch.set(newDocRef, {
             ...task,
+            assigneeId: assignee?.id || "",
             dueDate: Timestamp.fromDate(task.dueDate),
           })
         })
@@ -164,10 +174,14 @@ export default function TasksPage() {
 
       const tasksData = taskSnapshot.docs.map((doc) => {
         const data = doc.data()
+        const assignee = employeesData.find(e => e.id === data.assigneeId);
         return {
           ...data,
           id: doc.id,
           dueDate: (data.dueDate as Timestamp).toDate(),
+          // Add assignee details for rendering
+          assignee: assignee?.name || data.assignee,
+          avatar: assignee?.avatar || data.avatar,
         } as Task
       })
       setTasks(tasksData)
@@ -193,6 +207,7 @@ export default function TasksPage() {
       const newTask = {
         title: taskData.title,
         assignee: assignee.name,
+        assigneeId: assignee.id,
         avatar: assignee.avatar,
         dueDate: Timestamp.fromDate(new Date(taskData.dueDate)),
         priority: taskData.priority,
@@ -203,6 +218,31 @@ export default function TasksPage() {
       setIsAddOpen(false)
     } catch (error) {
       console.error("Error adding task:", error)
+    }
+  }
+
+  const handleEditTask = async (taskId: string, taskData: TaskFormValues) => {
+     const assignee = employees.find((e) => e.id === taskData.assigneeId)
+    if (!assignee) {
+      console.error("Assignee not found")
+      return
+    }
+    
+    try {
+        const taskDoc = doc(db, "tasks", taskId)
+        const updatedTask = {
+            title: taskData.title,
+            assignee: assignee.name,
+            assigneeId: assignee.id,
+            avatar: assignee.avatar,
+            dueDate: Timestamp.fromDate(new Date(taskData.dueDate)),
+            priority: taskData.priority,
+        }
+        await updateDoc(taskDoc, updatedTask);
+        fetchTasksAndEmployees();
+        setIsEditOpen(false);
+    } catch (error) {
+        console.error("Error editing task: ", error)
     }
   }
 
@@ -247,7 +287,12 @@ export default function TasksPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem
+                onSelect={() => {
+                  setSelectedTask(task)
+                  setIsEditOpen(true)
+                }}
+              >
                 <Edit className="mr-2 h-4 w-4" /> Edit
               </DropdownMenuItem>
               <DropdownMenuSub>
@@ -355,30 +400,39 @@ export default function TasksPage() {
         onAddTask={handleAddTask}
         employees={employees}
       />
-      
+
       {selectedTask && (
-        <AlertDialog
-            open={isDeleteAlertOpen}
-            onOpenChange={setIsDeleteAlertOpen}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the task "{selectedTask.title}".
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteTask}
-                  className="bg-destructive hover:bg-destructive/90"
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        <>
+            <EditTaskForm
+                isOpen={isEditOpen}
+                onOpenChange={setIsEditOpen}
+                onEditTask={handleEditTask}
+                employees={employees}
+                task={selectedTask}
+            />
+            <AlertDialog
+                open={isDeleteAlertOpen}
+                onOpenChange={setIsDeleteAlertOpen}
+            >
+                <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the task "{selectedTask.title}".
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                    onClick={handleDeleteTask}
+                    className="bg-destructive hover:bg-destructive/90"
+                    >
+                    Delete
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
       )}
 
     </AppLayout>
