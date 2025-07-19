@@ -62,8 +62,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser)
-       if (currentUser) {
+      if (currentUser) {
+        setUser(currentUser)
         try {
           const q = query(collection(db, "test0"), where("email", "==", currentUser.email));
           const querySnapshot = await getDocs(q);
@@ -78,6 +78,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           setUserName(currentUser.displayName); // Fallback on error
         }
       } else {
+        setUser(null)
         setUserName(null);
       }
     })

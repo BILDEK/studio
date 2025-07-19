@@ -70,12 +70,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser)
       if (currentUser) {
-        setEmail(currentUser.email || "")
+        setUser(currentUser);
+        setEmail(currentUser.email || "");
+        
         try {
           const q = query(collection(db, "test0"), where("email", "==", currentUser.email));
           const querySnapshot = await getDocs(q);
+          
           if (!querySnapshot.empty) {
             const userDoc = querySnapshot.docs[0];
             setEmployeeDocId(userDoc.id);
@@ -85,13 +87,19 @@ export default function ProfilePage() {
           }
         } catch (error) {
            console.error("Error fetching user name from Firestore:", error);
-           setName(currentUser.displayName || ""); // Fallback
+           setName(currentUser.displayName || ""); // Fallback on error
         }
+      } else {
+        setUser(null);
+        setName("");
+        setEmail("");
+        setEmployeeDocId(null);
       }
-      setIsLoading(false)
-    })
-    return () => unsubscribe()
-  }, [])
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault()
