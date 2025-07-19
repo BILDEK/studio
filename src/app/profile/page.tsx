@@ -1,4 +1,16 @@
+
 "use client"
+
+import { useEffect, useState } from "react"
+import {
+  type User,
+  onAuthStateChanged,
+  updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+} from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -13,8 +25,109 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2 } from "lucide-react"
 
 export default function ProfilePage() {
+  const { toast } = useToast()
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser)
+      if (currentUser) {
+        setName(currentUser.displayName || "")
+        setEmail(currentUser.email || "")
+      }
+      setIsLoading(false)
+    })
+    return () => unsubscribe()
+  }, [])
+
+  const handleSaveChanges = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to update your profile.",
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      // Update display name
+      if (name !== user.displayName) {
+        await updateProfile(user, { displayName: name })
+        toast({
+          title: "Success",
+          description: "Your name has been updated.",
+        })
+      }
+
+      // Update password if a new password is provided
+      if (newPassword && currentPassword) {
+        const credential = EmailAuthProvider.credential(user.email!, currentPassword)
+        await reauthenticateWithCredential(user, credential)
+        await updatePassword(user, newPassword)
+        toast({
+          title: "Success",
+          description: "Your password has been updated.",
+        })
+        setCurrentPassword("")
+        setNewPassword("")
+      } else if (newPassword && !currentPassword) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please enter your current password to set a new one.",
+        })
+      }
+    } catch (error: any) {
+      let errorMessage = "An unexpected error occurred."
+      if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect current password. Please try again."
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "The new password is too weak."
+      }
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: errorMessage,
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const getInitials = (name: string | null) => {
+    if (!name) return ""
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+  }
+  
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    )
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -34,38 +147,64 @@ export default function ProfilePage() {
           <CardContent>
             <div className="flex flex-col items-center gap-4 sm:flex-row">
               <Avatar className="h-24 w-24">
-                <AvatarImage src="https://placehold.co/100x100.png" alt="@user" data-ai-hint="profile picture" />
-                <AvatarFallback>JD</AvatarFallback>
+                <AvatarImage src={user?.photoURL || "https://placehold.co/100x100.png"} alt="@user" data-ai-hint="profile picture" />
+                <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
               </Avatar>
               <div className="flex-1 text-center sm:text-left">
-                <h2 className="text-xl font-bold">Jane Doe</h2>
-                <p className="text-muted-foreground">jane.doe@example.com</p>
-                <Button variant="outline" size="sm" className="mt-2">
+                <h2 className="text-xl font-bold">{user?.displayName || "No Name"}</h2>
+                <p className="text-muted-foreground">{user?.email}</p>
+                <Button variant="outline" size="sm" className="mt-2" disabled>
                   Change Avatar
                 </Button>
               </div>
             </div>
             <Separator className="my-6" />
-            <form className="grid gap-6">
+            <form className="grid gap-6" onSubmit={handleSaveChanges}>
               <div className="grid gap-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" defaultValue="Jane Doe" />
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your full name"
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="jane.doe@example.com" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  disabled
+                  className="disabled:cursor-not-allowed disabled:opacity-70"
+                />
               </div>
                <div className="grid gap-2">
                 <Label htmlFor="password">Current Password</Label>
-                <Input id="password" type="password" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter current password to change"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
               </div>
                <div className="grid gap-2">
                 <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" />
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline">Cancel</Button>
-                <Button type="submit">Save Changes</Button>
+                <Button variant="outline" type="button" onClick={() => {/* maybe reset form */}}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
               </div>
             </form>
           </CardContent>
