@@ -4,7 +4,7 @@
 import { z } from "zod"
 import { optimizeWorkflowWithAI, type OptimizeWorkflowOutput } from "@/ai/flows/optimize-workflow"
 import { db } from "@/lib/firebase";
-import { collection, getDocs, writeBatch, doc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, writeBatch, doc, deleteDoc, DocumentData } from "firebase/firestore";
 
 const optimizerSchema = z.object({
   workflowDescription: z.string().min(10, "Please describe your workflow in more detail."),
@@ -89,3 +89,52 @@ export const migrateTest0ToEmployees = async () => {
     throw error;
   }
 };
+
+export const deleteDuplicateEmployees = async () => {
+  try {
+    const employeesCollectionRef = collection(db, "employees");
+    const querySnapshot = await getDocs(employeesCollectionRef);
+    
+    if (querySnapshot.empty) {
+      return { message: "No employees found." };
+    }
+
+    const emails = new Map<string, string[]>();
+    querySnapshot.forEach((doc) => {
+      const data = doc.data() as DocumentData;
+      const email = data.email;
+      if (email) {
+        if (!emails.has(email)) {
+          emails.set(email, []);
+        }
+        emails.get(email)!.push(doc.id);
+      }
+    });
+
+    const batch = writeBatch(db);
+    let deletedCount = 0;
+
+    for (const [email, docIds] of emails.entries()) {
+      if (docIds.length > 1) {
+        // Keep the first document, delete the rest
+        const idsToDelete = docIds.slice(1);
+        idsToDelete.forEach((id) => {
+          batch.delete(doc(db, "employees", id));
+          deletedCount++;
+        });
+      }
+    }
+
+    if (deletedCount > 0) {
+      await batch.commit();
+      return { message: `Successfully deleted ${deletedCount} duplicate employees.` };
+    } else {
+      return { message: "No duplicate employees found." };
+    }
+  } catch (error) {
+    console.error("Error deleting duplicate employees:", error);
+    throw new Error("Failed to delete duplicate employees.");
+  }
+};
+
+    

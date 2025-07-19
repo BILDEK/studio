@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { formatDistanceToNow } from 'date-fns'
-import { migrateTest0ToEmployees } from "@/lib/actions"
+import { migrateTest0ToEmployees, deleteDuplicateEmployees } from "@/lib/actions"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -52,6 +52,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
 
 export interface Employee {
   id: string
@@ -109,6 +110,7 @@ const sampleEmployees = [
 const employeesCollectionRef = collection(db, "employees")
 
 export default function EmployeesPage() {
+  const { toast } = useToast()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -202,6 +204,24 @@ export default function EmployeesPage() {
       console.error("Error deleting employee:", error)
     }
   }
+  
+  const handleDeleteDuplicates = async () => {
+    try {
+      const result = await deleteDuplicateEmployees();
+      toast({
+        title: "Success",
+        description: result.message,
+      });
+      fetchEmployees(); // Refresh the list
+    } catch (error) {
+      console.error("Error deleting duplicates:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete duplicate employees.",
+      });
+    }
+  }
 
   const handleSetStatus = async (id: string, status: "Active" | "On Leave" | "Inactive") => {
     try {
@@ -239,6 +259,9 @@ export default function EmployeesPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Employees</h1>
           <div>
+            <Button onClick={handleDeleteDuplicates} variant="outline" className="mr-4">
+              Delete Duplicates
+            </Button>
             <Button onClick={() => migrateTest0ToEmployees()} className="mr-4">
               Migrate Data
             </Button>
@@ -443,3 +466,5 @@ export default function EmployeesPage() {
     </AppLayout>
   )
 }
+
+    
