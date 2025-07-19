@@ -30,6 +30,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Popover,
   PopoverContent,
@@ -45,6 +46,7 @@ import {
 
 const editTaskSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters."),
+  description: z.string().optional(),
   assigneeId: z.string().min(1, "Please select an assignee."),
   dueDate: z.date({ required_error: "A due date is required." }),
   priority: z.enum(["Low", "Medium", "High"]),
@@ -71,6 +73,7 @@ export function EditTaskForm({
     resolver: zodResolver(editTaskSchema),
     defaultValues: {
       title: task.title,
+      description: task.description || "",
       assigneeId: task.assigneeId,
       dueDate: task.dueDate,
       priority: task.priority,
@@ -81,6 +84,7 @@ export function EditTaskForm({
     if (task) {
         form.reset({
             title: task.title,
+            description: task.description || "",
             assigneeId: task.assigneeId,
             dueDate: new Date(task.dueDate),
             priority: task.priority,
@@ -112,6 +116,20 @@ export function EditTaskForm({
                   <FormLabel>Task Title</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Finalize Q3 Marketing Campaign" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Add a short description for the task..." {...field} rows={3} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

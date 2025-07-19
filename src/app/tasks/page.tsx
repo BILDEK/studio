@@ -26,6 +26,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -60,6 +61,7 @@ export type TaskStatus = "todo" | "inProgress" | "done"
 export interface Task {
   id: string
   title: string
+  description?: string
   assignee: string
   assigneeId?: string
   dueDate: Date
@@ -71,6 +73,7 @@ export interface Task {
 const sampleTasks = [
   {
     title: "Finalize Q3 Marketing Campaign",
+    description: "Review and approve the final assets for the upcoming campaign.",
     assignee: "Noah Brown",
     assigneeId: "", // Will be populated later
     dueDate: new Date("2024-08-15"),
@@ -80,6 +83,7 @@ const sampleTasks = [
   },
   {
     title: "Develop new landing page mockups",
+    description: "Create three different versions of the landing page for A/B testing.",
     assignee: "Peter Jones",
     assigneeId: "",
     dueDate: new Date("2024-08-10"),
@@ -89,6 +93,7 @@ const sampleTasks = [
   },
   {
     title: "Refactor authentication module",
+    description: "Improve security and performance of the user authentication flow.",
     assignee: "John Smith",
     assigneeId: "",
     dueDate: new Date("2024-08-05"),
@@ -98,6 +103,7 @@ const sampleTasks = [
   },
   {
     title: "Plan project kickoff meeting",
+    description: "Prepare agenda and presentation slides for the new project kickoff.",
     assignee: "Jane Doe",
     assigneeId: "",
     dueDate: new Date("2024-07-28"),
@@ -107,6 +113,7 @@ const sampleTasks = [
   },
   {
     title: "Onboard new marketing intern",
+    description: "Create an onboarding plan and schedule introduction meetings.",
     assignee: "Noah Brown",
     assigneeId: "",
     dueDate: new Date("2024-07-25"),
@@ -206,6 +213,7 @@ export default function TasksPage() {
     try {
       const newTask = {
         title: taskData.title,
+        description: taskData.description,
         assignee: assignee.name,
         assigneeId: assignee.id,
         avatar: assignee.avatar,
@@ -232,6 +240,7 @@ export default function TasksPage() {
         const taskDoc = doc(db, "tasks", taskId)
         const updatedTask = {
             title: taskData.title,
+            description: taskData.description,
             assignee: assignee.name,
             assigneeId: assignee.id,
             avatar: assignee.avatar,
@@ -269,7 +278,7 @@ export default function TasksPage() {
   }
 
   const TaskCard = ({ task }: { task: Task }) => (
-    <Card>
+    <Card className="flex flex-col">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <CardTitle className="text-base font-medium leading-tight">
@@ -331,7 +340,12 @@ export default function TasksPage() {
           </DropdownMenu>
         </div>
       </CardHeader>
-      <CardContent className="py-2">
+      <CardContent className="py-2 flex-grow">
+        {task.description && (
+            <CardDescription className="text-sm mb-3 text-foreground/80">
+                {task.description}
+            </CardDescription>
+        )}
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Avatar className="h-6 w-6">

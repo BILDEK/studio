@@ -28,6 +28,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Popover,
   PopoverContent,
@@ -43,6 +44,7 @@ import {
 
 const addTaskSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters."),
+  description: z.string().optional(),
   assigneeId: z.string().min(1, "Please select an assignee."),
   dueDate: z.date({ required_error: "A due date is required." }),
   priority: z.enum(["Low", "Medium", "High"]),
@@ -67,6 +69,7 @@ export function AddTaskForm({
     resolver: zodResolver(addTaskSchema),
     defaultValues: {
       title: "",
+      description: "",
       assigneeId: "",
       priority: "Medium",
     },
@@ -97,6 +100,20 @@ export function AddTaskForm({
                   <FormLabel>Task Title</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Finalize Q3 Marketing Campaign" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Add a short description for the task..." {...field} rows={3} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
