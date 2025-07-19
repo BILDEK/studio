@@ -122,7 +122,7 @@
 
 @layer components {
     .cyber-punk .theme-button[data-state=active] {
-        background-color: hsl(var(--secondary));
-        color: hsl(var(--secondary-foreground));
+        background-color: hsl(var(--secondary)) !important;
+        color: hsl(var(--secondary-foreground)) !important;
     }
 }

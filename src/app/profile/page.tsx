@@ -260,7 +260,7 @@ function AppearanceSettings() {
       <CardContent className="flex flex-col gap-4 sm:flex-row">
         <Button
           variant="theme"
-          className={cn("w-full justify-center", "theme-button")}
+          className="w-full justify-center theme-button"
           onClick={() => setTheme("light")}
           data-state={theme === 'light' ? 'active' : 'inactive'}
         >
@@ -268,7 +268,7 @@ function AppearanceSettings() {
         </Button>
         <Button
           variant="theme"
-          className={cn("w-full justify-center", "theme-button")}
+          className="w-full justify-center theme-button"
           onClick={() => setTheme("dark")}
           data-state={theme === 'dark' ? 'active' : 'inactive'}
         >
@@ -276,7 +276,7 @@ function AppearanceSettings() {
         </Button>
         <Button
           variant="theme"
-          className={cn("w-full justify-center", "theme-button")}
+          className="w-full justify-center theme-button"
           onClick={() => setTheme("cyber-punk")}
           data-state={theme === 'cyber-punk' ? 'active' : 'inactive'}
         >
