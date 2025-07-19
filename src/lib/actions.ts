@@ -99,35 +99,39 @@ export const deleteDuplicateEmployees = async () => {
       return { message: "No employees found." };
     }
 
-    const emails = new Map<string, string[]>();
+    const seenEmails = new Set<string>();
+    const seenNames = new Set<string>();
+    const idsToDelete = new Set<string>();
+
     querySnapshot.forEach((doc) => {
       const data = doc.data() as DocumentData;
       const email = data.email;
-      if (email) {
-        if (!emails.has(email)) {
-          emails.set(email, []);
-        }
-        emails.get(email)!.push(doc.id);
+      const name = data.name;
+
+      let isDuplicate = false;
+
+      if (email && seenEmails.has(email)) {
+        isDuplicate = true;
+      }
+      if (name && seenNames.has(name)) {
+        isDuplicate = true;
+      }
+
+      if (isDuplicate) {
+        idsToDelete.add(doc.id);
+      } else {
+        if (email) seenEmails.add(email);
+        if (name) seenNames.add(name);
       }
     });
 
-    const batch = writeBatch(db);
-    let deletedCount = 0;
-
-    for (const [email, docIds] of emails.entries()) {
-      if (docIds.length > 1) {
-        // Keep the first document, delete the rest
-        const idsToDelete = docIds.slice(1);
-        idsToDelete.forEach((id) => {
-          batch.delete(doc(db, "employees", id));
-          deletedCount++;
-        });
-      }
-    }
-
-    if (deletedCount > 0) {
+    if (idsToDelete.size > 0) {
+      const batch = writeBatch(db);
+      idsToDelete.forEach((id) => {
+        batch.delete(doc(db, "employees", id));
+      });
       await batch.commit();
-      return { message: `Successfully deleted ${deletedCount} duplicate employees.` };
+      return { message: `Successfully deleted ${idsToDelete.size} duplicate employees.` };
     } else {
       return { message: "No duplicate employees found." };
     }
@@ -136,5 +140,4 @@ export const deleteDuplicateEmployees = async () => {
     throw new Error("Failed to delete duplicate employees.");
   }
 };
-
     
