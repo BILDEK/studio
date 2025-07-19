@@ -119,3 +119,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+    .cyber-punk .theme-button[data-state=active] {
+        background-color: hsl(var(--secondary));
+        color: hsl(var(--secondary-foreground));
+    }
+}

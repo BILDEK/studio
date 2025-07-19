@@ -30,6 +30,7 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, Moon, Sun, Monitor } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 function AccountSettings() {
   const { toast } = useToast()
@@ -248,7 +249,7 @@ function AccountSettings() {
 }
 
 function AppearanceSettings() {
-  const { setTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
 
   return (
     <Card>
@@ -259,22 +260,25 @@ function AppearanceSettings() {
       <CardContent className="flex flex-col gap-4 sm:flex-row">
         <Button
           variant="theme"
-          className="w-full justify-center"
+          className={cn("w-full justify-center", "theme-button")}
           onClick={() => setTheme("light")}
+          data-state={theme === 'light' ? 'active' : 'inactive'}
         >
           <Sun className="mr-2 h-4 w-4" /> Light
         </Button>
         <Button
           variant="theme"
-          className="w-full justify-center"
+          className={cn("w-full justify-center", "theme-button")}
           onClick={() => setTheme("dark")}
+          data-state={theme === 'dark' ? 'active' : 'inactive'}
         >
           <Moon className="mr-2 h-4 w-4" /> Dark
         </Button>
         <Button
           variant="theme"
-          className="w-full justify-center"
+          className={cn("w-full justify-center", "theme-button")}
           onClick={() => setTheme("cyber-punk")}
+          data-state={theme === 'cyber-punk' ? 'active' : 'inactive'}
         >
           <Monitor className="mr-2 h-4 w-4" /> Cyberpunk
         </Button>
