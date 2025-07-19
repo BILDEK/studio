@@ -79,19 +79,19 @@ export default function InventoryPage() {
     switch (status) {
       case "In Stock":
         return (
-          <Badge className="bg-primary/20 text-primary-foreground border-primary/20 hover:bg-primary/30">
+          <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200">
             {status}
           </Badge>
         )
       case "Low Stock":
         return (
-          <Badge variant="destructive" className="bg-yellow-500/20 text-yellow-700 border-yellow-500/20 hover:bg-yellow-500/30">
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200">
             {status}
           </Badge>
         )
       case "Out of Stock":
         return (
-          <Badge variant="destructive" className="bg-red-500/20 text-red-700 border-red-500/20 hover:bg-red-500/30">
+           <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
             {status}
           </Badge>
         )
