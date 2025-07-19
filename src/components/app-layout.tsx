@@ -17,7 +17,8 @@ import {
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import { onAuthStateChanged, signOut, type User as FirebaseUser } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { auth, db } from "@/lib/firebase"
+import { collection, query, where, getDocs } from "firebase/firestore"
 
 import { VerdantFlowLogo } from "./icons"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
@@ -57,10 +58,28 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter()
   const { toast } = useToast()
   const [user, setUser] = useState<FirebaseUser | null>(null)
+  const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser)
+       if (currentUser) {
+        try {
+          const q = query(collection(db, "test0"), where("email", "==", currentUser.email));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0];
+            setUserName(userDoc.data().name);
+          } else {
+             setUserName(currentUser.displayName); // Fallback to display name
+          }
+        } catch (error) {
+          console.error("Error fetching user name from Firestore:", error);
+          setUserName(currentUser.displayName); // Fallback on error
+        }
+      } else {
+        setUserName(null);
+      }
     })
     return () => unsubscribe()
   }, [])
@@ -134,10 +153,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto">
                    <Avatar className="h-8 w-8">
                     <AvatarImage src={user?.photoURL || "https://placehold.co/100x100.png"} alt="@user" data-ai-hint="profile picture" />
-                    <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
+                    <AvatarFallback>{getInitials(userName)}</AvatarFallback>
                   </Avatar>
                   <div className="text-left group-data-[collapsible=icon]:hidden">
-                    <p className="font-medium text-sm">{user?.displayName || "User"}</p>
+                    <p className="font-medium text-sm">{userName || "User"}</p>
                     <p className="text-xs text-muted-foreground">{user?.email}</p>
                   </div>
                 </Button>

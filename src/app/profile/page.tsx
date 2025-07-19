@@ -5,12 +5,13 @@ import { useEffect, useState } from "react"
 import {
   type User,
   onAuthStateChanged,
-  updateProfile,
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { auth, db } from "@/lib/firebase"
+import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore"
+
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -38,13 +39,27 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("")
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
+  const [employeeDocId, setEmployeeDocId] = useState<string | null>(null)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser)
       if (currentUser) {
-        setName(currentUser.displayName || "")
         setEmail(currentUser.email || "")
+        try {
+          const q = query(collection(db, "test0"), where("email", "==", currentUser.email));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0];
+            setEmployeeDocId(userDoc.id);
+            setName(userDoc.data().name || "");
+          } else {
+            setName(currentUser.displayName || ""); // Fallback
+          }
+        } catch (error) {
+           console.error("Error fetching user name from Firestore:", error);
+           setName(currentUser.displayName || ""); // Fallback
+        }
       }
       setIsLoading(false)
     })
@@ -65,13 +80,14 @@ export default function ProfilePage() {
     setIsSubmitting(true)
 
     try {
-      // Update display name
-      if (name !== user.displayName) {
-        await updateProfile(user, { displayName: name })
+      // Update name in Firestore
+      if (employeeDocId) {
+        const userDocRef = doc(db, "test0", employeeDocId);
+        await updateDoc(userDocRef, { name: name });
         toast({
           title: "Success",
           description: "Your name has been updated.",
-        })
+        });
       }
 
       // Update password if a new password is provided
@@ -148,10 +164,10 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center gap-4 sm:flex-row">
               <Avatar className="h-24 w-24">
                 <AvatarImage src={user?.photoURL || "https://placehold.co/100x100.png"} alt="@user" data-ai-hint="profile picture" />
-                <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
+                <AvatarFallback>{getInitials(name)}</AvatarFallback>
               </Avatar>
               <div className="flex-1 text-center sm:text-left">
-                <h2 className="text-xl font-bold">{user?.displayName || "No Name"}</h2>
+                <h2 className="text-xl font-bold">{name || "No Name"}</h2>
                 <p className="text-muted-foreground">{user?.email}</p>
                 <Button variant="outline" size="sm" className="mt-2" disabled>
                   Change Avatar
