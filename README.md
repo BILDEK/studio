@@ -1,4 +1,4 @@
-# VerdantFlow
+gi# VerdantFlow
 
 VerdantFlow is a comprehensive application designed to streamline various business operations. It provides features for customer management, employee tracking, stock management, and task oversight, with a key focus on optimizing workflows through AI-powered suggestions.
 
@@ -37,6 +37,7 @@ To get a local copy up and running, follow these steps:
     ```
     Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+<<<<<<< HEAD
 ## Tema Yönetimi
 
 Uygulama, kullanıcıların **Profil > Appearance** (Görünüm) ayarları sayfasından seçebileceği üç farklı görsel temayı desteklemektedir: Aydınlık (Light), Karanlık (Dark) ve Cyberpunk.
@@ -83,3 +84,39 @@ function AppearanceSettings() {
 }
 ```
 Bu yöntem, uygulama genelinde sağlam ve öngörülebilir bir tema yönetimi sağlar.
+=======
+    
+```
+bash
+    git clone https://github.com/BILDEK/studio.git
+    
+```
+2.  Navigate to the project directory:
+    
+```
+bash
+    cd studio
+    
+```
+3.  Install dependencies:
+```
+bash
+    npm install
+    
+```
+4.  Run the development server:
+```
+bash
+    npm run dev
+    
+```
+The application will be available at `http://localhost:3000`.
+
+## Contributing
+
+We welcome contributions! Please see the `CONTRIBUTING.md` (if you have one) for details on how to contribute.
+
+## License
+
+This project is licensed under the MIT License - see the `LICENSE` file for details.
+>>>>>>> 0d94fabc5dc2ea086f1d0446bf24ea516ffe234f
