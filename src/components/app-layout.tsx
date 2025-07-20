@@ -143,28 +143,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </Link>
               </SidebarMenuItem>
             ))}
-             <SidebarMenuItem>
-                <Link href="/profile">
-                  <SidebarMenuButton
-                    isActive={pathname === "/profile"}
-                    tooltip="Profile"
-                  >
-                    <User />
-                    <span>Profile</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-               <SidebarMenuItem>
-                <Link href="/profile?tab=appearance">
-                  <SidebarMenuButton
-                    isActive={pathname === "/settings"}
-                    tooltip="Settings"
-                  >
-                    <Settings />
-                    <span>Settings</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
