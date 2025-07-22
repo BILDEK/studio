@@ -1,8 +1,8 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch, Timestamp } from "firebase/firestore"
+import { useState, useEffect, useRef } from "react"
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch, Timestamp, query, orderBy, limit, startAfter } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { formatDistanceToNow } from 'date-fns'
 import { migrateTest0ToEmployees, deleteDuplicateEmployees } from "@/lib/actions"
@@ -112,6 +112,8 @@ const employeesCollectionRef = collection(db, "employees")
 export default function EmployeesPage() {
   const { toast } = useToast()
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [lastVisible, setLastVisible] = useState<any>(null)
+  const [hasMore, setHasMore] = useState(true)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -119,52 +121,68 @@ export default function EmployeesPage() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  const fetchEmployees = async () => {
-    setIsLoading(true)
+  const PAGE_SIZE = 20;
+  const loadingRef = useRef(false);
+
+  const fetchEmployees = async (isInitial = false) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setIsLoading(true);
     try {
-      const querySnapshot = await getDocs(employeesCollectionRef)
-      if (querySnapshot.empty) {
-        // If the collection is empty, populate it with sample data
-        const batch = writeBatch(db)
-        sampleEmployees.forEach((employee) => {
-          const newDocRef = doc(employeesCollectionRef)
-          batch.set(newDocRef, { ...employee, lastActivity: Timestamp.fromDate(employee.lastActivity as Date) })
-        })
-        await batch.commit()
-        // Fetch again after populating
-        const newQuerySnapshot = await getDocs(employeesCollectionRef)
-        const employeesData = newQuerySnapshot.docs.map((doc) => {
-          const data = doc.data()
-          return {
-            ...data,
-            id: doc.id,
-            lastActivity: data.lastActivity instanceof Timestamp ? data.lastActivity.toDate() : (data.lastActivity || 'N/A'),
-          } as Employee
-        })
-        setEmployees(employeesData)
+      let q;
+      if (isInitial || !lastVisible) {
+        q = query(employeesCollectionRef, orderBy("lastActivity", "desc"), limit(PAGE_SIZE));
       } else {
-        const employeesData = querySnapshot.docs.map((doc) => {
-           const data = doc.data();
-           return {
-             ...data,
-             id: doc.id,
-             // Handle both Timestamp and string for lastActivity
-             lastActivity: data.lastActivity instanceof Timestamp ? data.lastActivity.toDate() : (data.lastActivity || 'N/A'),
-           } as Employee;
-        });
-        setEmployees(employeesData)
+        q = query(employeesCollectionRef, orderBy("lastActivity", "desc"), startAfter(lastVisible), limit(PAGE_SIZE));
       }
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        setHasMore(false);
+        setIsLoading(false);
+        loadingRef.current = false;
+        return;
+      }
+      const employeesData = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          lastActivity: data.lastActivity instanceof Timestamp ? data.lastActivity.toDate() : (data.lastActivity || 'N/A'),
+        } as Employee;
+      });
+      if (isInitial) {
+        setEmployees(employeesData);
+      } else {
+        setEmployees((prev) => [...prev, ...employeesData]);
+      }
+      setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
+      setHasMore(querySnapshot.docs.length === PAGE_SIZE);
     } catch (error) {
-      console.error("Error fetching employees:", error)
-      // Handle error appropriately, e.g., show a toast message
+      console.error("Error fetching employees:", error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
+      loadingRef.current = false;
     }
-  }
+  };
 
   useEffect(() => {
-    fetchEmployees()
-  }, [])
+    fetchEmployees(true);
+    // eslint-disable-next-line
+  }, []);
+
+  // Sonsuz scroll için event listener
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!hasMore || isLoading) return;
+      if (
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 300
+      ) {
+        fetchEmployees();
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hasMore, isLoading, lastVisible]);
 
   const handleAddEmployee = async (newEmployeeData: Omit<Employee, "id" | "avatar" | "status" | "lastActivity">) => {
     try {
@@ -408,6 +426,15 @@ export default function EmployeesPage() {
                     </TableCell>
                   </TableRow>
                 )}
+              </TableBody>
+            </Table>
+            {hasMore && !isLoading && (
+              <div className="flex justify-center mt-4">
+                <Button onClick={() => fetchEmployees()} variant="outline">
+                  Daha fazla yükle
+                </Button>
+              </div>
+            )}
               </TableBody>
             </Table>
           </CardContent>

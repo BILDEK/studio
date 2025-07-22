@@ -196,3 +196,5 @@ export function AppLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   )
 }
+
+export default AppLayout;

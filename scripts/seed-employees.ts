@@ -51,7 +51,8 @@ async function seedEmployees() {
     const status = getRandomStatus()
     const avatar = faker.image.avatar()
     const lastActivity = Timestamp.fromDate(faker.date.recent({ days: 30 }))
-    batch.set(doc(employeesCollectionRef), { name, email, role, status, avatar, lastActivity })
+    const autoId = faker.string.uuid()
+    batch.set(doc(db, 'employees', autoId), { name, email, role, status, avatar, lastActivity })
   }
   await batch.commit()
   console.log('Seeded 42 employees.')

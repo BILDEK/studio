@@ -298,9 +298,9 @@ export default function TasksPage() {
           <div className="flex items-center gap-2">
             <Avatar className="h-6 w-6">
               <AvatarImage src={task.avatar} data-ai-hint="profile picture" />
-              <AvatarFallback>{task.assignee.charAt(0)}</AvatarFallback>
+              <AvatarFallback>{typeof task.assignee === 'string' && task.assignee.length > 0 ? task.assignee.charAt(0) : '?'}</AvatarFallback>
             </Avatar>
-            <span>{task.assignee}</span>
+            <span>{task.assignee || 'Unknown'}</span>
           </div>
           <span>
             Due: {new Date(task.dueDate).toLocaleDateString()}

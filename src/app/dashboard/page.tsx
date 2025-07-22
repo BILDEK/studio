@@ -175,49 +175,36 @@ export default function DashboardPage() {
             <>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Total Employees
-                  </CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Employees</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {employeeCount !== null ? employeeCount : "-"}
-                  </div>
+                  <div className="text-2xl font-bold">{employeeCount ?? '-'}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {recentEmployee ? (
-                      <span className="inline-flex items-center gap-1">
-                        <span className="bg-green-100 text-green-700 rounded px-2 py-0.5 text-[0.85em] font-medium">{recentEmployee.name}</span>
-                        <span>added {recentEmployee.addedAgo}</span>
-                      </span>
-                    ) : (
-                      <span>Loading recent employee...</span>
-                    )}
+                    {recentEmployee ? `Last added: ${recentEmployee.name} (${recentEmployee.addedAgo})` : '-'}
                   </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Inventory Items
-                  </CardTitle>
                   <Boxes className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Inventory</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalStockCount !== null ? totalStockCount : '-'}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {inventoryCount !== null ? `${inventoryCount} product types` : 'Loading...'}
                   </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Open Tasks</CardTitle>
                   <ListTodo className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Tasks</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalTasksCount !== null ? totalTasksCount : '-'}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {openTasksCount !== null ? `${openTasksCount} open` : 'Loading...'}<br />
                     {overdueTasksCount !== null ? `${overdueTasksCount} overdue` : ''}
                   </p>
