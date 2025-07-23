@@ -1,7 +1,7 @@
 
 import { Task } from "@/app/tasks/page";
 
-export const sampleTasks: Omit<Task, "id" | "assigneeId" | "dueDate" >[] = [
+export const sampleTasks: Omit<Task, "id" | "assigneeId">[] = [
   {
     title: "Finalize Q3 Marketing Campaign",
     description: "Review and approve the final assets for the upcoming campaign.",

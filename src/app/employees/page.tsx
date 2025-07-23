@@ -434,13 +434,11 @@ export default function EmployeesPage() {
                   Daha fazla yükle
                 </Button>
               </div>
-            )}
-              </TableBody>
-            </Table>
+            )} 
+
           </CardContent>
         </Card>
       </div>
-
       <AddEmployeeForm
         onAddEmployee={handleAddEmployee}
         isOpen={isAddOpen}

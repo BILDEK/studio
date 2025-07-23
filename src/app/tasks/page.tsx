@@ -350,9 +350,13 @@ export default function TasksPage() {
             <TabsTrigger value="inProgress">In Progress</TabsTrigger>
             <TabsTrigger value="done">Done</TabsTrigger>
           </TabsList>
-          {renderTaskColumn("todo", "To Do")}
-          {renderTaskColumn("inProgress", "In Progress")}
-          {renderTaskColumn("done", "Done")}
+          <div className="overflow-x-auto w-full">
+            <div className="min-w-[320px] flex flex-col gap-4 md:grid md:gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {renderTaskColumn("todo", "To Do")}
+              {renderTaskColumn("inProgress", "In Progress")}
+              {renderTaskColumn("done", "Done")}
+            </div>
+          </div>
         </Tabs>
       </div>
       
