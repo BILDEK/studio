@@ -1,0 +1,56 @@
+Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HotReload assetPrefix="" globalError={[...]}>
+      <AppDevOverlay state={{nextId:1, ...}} globalError={[...]}>
+        <AppDevOverlayErrorBoundary globalError={[...]} onError={function bound dispatchSetState}>
+          <ReplaySsrOnlyErrors>
+          <DevRootHTTPAccessFallbackBoundary>
+            <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+              <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+                <RedirectBoundary>
+                  <RedirectErrorBoundary router={{...}}>
+                    <Head>
+                    <link>
+                    <script>
+                    <script>
+                    <script>
+                    <ClientSegmentRoot Component={function RootLayout} slots={{...}} params={{}}>
+                      <RootLayout params={Promise}>
+                        <html lang="en" suppressHydrationWarning={true}>
+                          <head>
+                            <title>
+                            <meta>
+                            <link>
+                            <link>
++                           <link
++                             href={"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"}
++                             rel="stylesheet"
++                           >
+-                           <script src="/__replco/static/devtools/eruda/3.2.3/eruda.js">
+                          ...
+                    ...
+        ...
+
+    at throwOnHydrationMismatch (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:5037:56)
+    at beginWork (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:8209:918)
+    at runWithFiberInDEV (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:3073:74)
+    at performUnitOfWork (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:10243:97)
+    at workLoopConcurrentByScheduler (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:10239:58)
+    at renderRootConcurrent (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:10221:71)
+    at performWorkOnRoot (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:9853:176)
+    at performWorkOnRootViaSchedulerTask (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:10826:9)
+    at MessagePort.performWorkUntilDeadline (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/node_modules_next_dist_compiled_2ce9398a._.js:1982:64)
+    at link (<anonymous>)
+    at RootLayout (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/src_4cbc320b._.js:463:223)
+    at ClientSegmentRoot (https://844b8b9f-8c0d-4f0a-b541-431251f43c5f-00-29a5go8r018y8.janeway.replit.dev/_next/static/chunks/node_modules_next_dist_1a6ee436._.js:2116:50)
