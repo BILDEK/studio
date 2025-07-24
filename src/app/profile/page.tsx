@@ -247,9 +247,11 @@ function AccountSettings() {
 }
 
 function AppearanceSettings() {
-  const [activeTheme, setActiveTheme] = useState("")
+  const [activeTheme, setActiveTheme] = useState("light")
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const currentClass = document.documentElement.className
     if (currentClass === "dark" || currentClass === "cyber-punk") {
       setActiveTheme(currentClass)
@@ -262,6 +264,10 @@ function AppearanceSettings() {
     const themeClass = newTheme === "light" ? "" : newTheme
     document.documentElement.className = themeClass
     setActiveTheme(newTheme)
+  }
+
+  if (!mounted) {
+    return <div>Loading...</div>
   }
 
   return (
