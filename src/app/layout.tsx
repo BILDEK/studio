@@ -1,6 +1,6 @@
 import { Inter } from 'next/font/google'; // next/font'u içe aktarın
 import { Toaster } from "@/components/ui/toaster";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 // Inter font'u tanımlayın ve subsets'i belirtin
