@@ -1,9 +1,12 @@
 
-'use client'
-
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "next-themes"
 import "./globals.css"
+
+export const metadata = {
+  title: "VerdantFlow",
+  description: "A comprehensive business management app for customer use.",
+}
 
 export default function RootLayout({
   children,
@@ -13,8 +16,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <title>VerdantFlow</title>
-        <meta name="description" content="A comprehensive business management app for customer use." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
