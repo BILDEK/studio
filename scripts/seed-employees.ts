@@ -7,12 +7,12 @@ import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || ''
+  apiKey: "AIzaSyDKNSbt5df1kuI7tfECMDl5QEdVAUEqT6s",
+  authDomain: "verdantflow-8lsqk.firebaseapp.com",
+  projectId: "verdantflow-8lsqk",
+  storageBucket: "verdantflow-8lsqk.firebasestorage.app",
+  messagingSenderId: "56107029688",
+  appId: "1:56107029688:web:3c20cc2787fe61db7f504d"
 }
 
 const app = initializeApp(firebaseConfig)
