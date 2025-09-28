@@ -51,10 +51,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PlusCircle, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, Filter, X } from "lucide-react";
 import { AddTaskForm, TaskFormValues } from "@/components/add-task-form";
 import { EditTaskForm } from "@/components/edit-task-form";
 import type { Employee } from "@/app/employees/page";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type TaskStatus = "todo" | "inProgress" | "done";
 
@@ -96,6 +104,12 @@ export default function TasksPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  
+  // Filter states
+  const [searchText, setSearchText] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [assigneeFilter, setAssigneeFilter] = useState("all");
+  const [dueDateFilter, setDueDateFilter] = useState("all");
 
   const fetchTasksAndEmployees = async () => {
     setIsLoading(true);
@@ -226,6 +240,85 @@ export default function TasksPage() {
     }
   };
 
+  // Filter logic functions
+  const isOverdue = (dueDate: Date) => {
+    return new Date(dueDate) < new Date(new Date().setHours(0, 0, 0, 0));
+  };
+
+  const isToday = (dueDate: Date) => {
+    const today = new Date();
+    const taskDate = new Date(dueDate);
+    return taskDate.toDateString() === today.toDateString();
+  };
+
+  const isThisWeek = (dueDate: Date) => {
+    const today = new Date();
+    const weekStart = new Date(today.setDate(today.getDate() - today.getDay()));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const taskDate = new Date(dueDate);
+    return taskDate >= weekStart && taskDate <= weekEnd;
+  };
+
+  const filterTasks = (tasks: Task[], status: TaskStatus) => {
+    let filtered = tasks.filter((task) => task.status === status);
+    
+    // Apply search filter
+    if (searchText.trim() !== "") {
+      const search = searchText.toLowerCase().trim();
+      filtered = filtered.filter(
+        (task) =>
+          task.title.toLowerCase().includes(search) ||
+          (task.description && task.description.toLowerCase().includes(search))
+      );
+    }
+    
+    // Apply priority filter
+    if (priorityFilter !== "all") {
+      filtered = filtered.filter((task) => task.priority === priorityFilter);
+    }
+    
+    // Apply assignee filter
+    if (assigneeFilter !== "all") {
+      filtered = filtered.filter((task) => task.assigneeId === assigneeFilter);
+    }
+    
+    // Apply due date filter
+    if (dueDateFilter !== "all") {
+      switch (dueDateFilter) {
+        case "overdue":
+          filtered = filtered.filter((task) => isOverdue(task.dueDate));
+          break;
+        case "today":
+          filtered = filtered.filter((task) => isToday(task.dueDate));
+          break;
+        case "thisWeek":
+          filtered = filtered.filter((task) => isThisWeek(task.dueDate));
+          break;
+      }
+    }
+    
+    return filtered;
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearchText("");
+    setPriorityFilter("all");
+    setAssigneeFilter("all");
+    setDueDateFilter("all");
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = () => {
+    return (
+      searchText.trim() !== "" ||
+      priorityFilter !== "all" ||
+      assigneeFilter !== "all" ||
+      dueDateFilter !== "all"
+    );
+  };
+
   const TaskCard = ({ task }: { task: Task }) => (
     <Card className="flex flex-col">
       <CardHeader className="pb-2">
@@ -317,15 +410,12 @@ export default function TasksPage() {
   );
 
   const renderTaskColumn = (status: TaskStatus, title: string) => {
-    const filteredTasks = tasks.filter((task) => task.status === status);
+    const filteredTasks = filterTasks(tasks, status);
     return (
       <TabsContent value={status} className="mt-4">
-        {" "}
-        {/* mt-4 class'ı ekleyerek üst boşluk verdik */}
         {isLoading ? (
           <div className="text-center p-8">Loading tasks...</div>
         ) : filteredTasks.length > 0 ? (
-          // GRID YAPISI BURAYA TAŞINDI
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredTasks.map((task) => (
               <TaskCard key={task.id} task={task} />
@@ -333,7 +423,10 @@ export default function TasksPage() {
           </div>
         ) : (
           <div className="text-center text-muted-foreground p-8">
-            No tasks in "{title}".
+            {hasActiveFilters() 
+              ? `No tasks matching the current filters in "${title}".`
+              : `No tasks in "${title}".`
+            }
           </div>
         )}
       </TabsContent>
@@ -349,6 +442,106 @@ export default function TasksPage() {
             <PlusCircle className="mr-2 h-4 w-4" /> Add Task
           </Button>
         </div>
+
+        {/* Filter Controls */}
+        <Card className="p-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              <h3 className="text-sm font-medium">Filters</h3>
+              {hasActiveFilters() && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="ml-auto"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+            
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Search Filter */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search tasks..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              {/* Priority Filter */}
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="High">High Priority</SelectItem>
+                  <SelectItem value="Medium">Medium Priority</SelectItem>
+                  <SelectItem value="Low">Low Priority</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Assignee Filter */}
+              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Employees</SelectItem>
+                  {employees.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Due Date Filter */}
+              <Select value={dueDateFilter} onValueChange={setDueDateFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Due Date" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Due Dates</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="today">Due Today</SelectItem>
+                  <SelectItem value="thisWeek">Due This Week</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Active Filters Display */}
+            {hasActiveFilters() && (
+              <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                <span>Active filters:</span>
+                {searchText.trim() && (
+                  <Badge variant="secondary">Search: "{searchText.trim()}"</Badge>
+                )}
+                {priorityFilter !== "all" && (
+                  <Badge variant="secondary">Priority: {priorityFilter}</Badge>
+                )}
+                {assigneeFilter !== "all" && (
+                  <Badge variant="secondary">
+                    Assignee: {employees.find(e => e.id === assigneeFilter)?.name || assigneeFilter}
+                  </Badge>
+                )}
+                {dueDateFilter !== "all" && (
+                  <Badge variant="secondary">
+                    Due: {dueDateFilter === "overdue" ? "Overdue" : 
+                          dueDateFilter === "today" ? "Today" : 
+                          dueDateFilter === "thisWeek" ? "This Week" : dueDateFilter}
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
 
         <Tabs defaultValue="todo" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
