@@ -137,6 +137,9 @@ export default function EmployeesPage() {
       }
       const querySnapshot = await getDocs(q);
       if (querySnapshot.empty) {
+        if (isInitial) {
+          setEmployees([]);
+        }
         setHasMore(false);
         setIsLoading(false);
         loadingRef.current = false;
@@ -152,13 +155,19 @@ export default function EmployeesPage() {
       });
       if (isInitial) {
         setEmployees(employeesData);
+        setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
       } else {
         setEmployees((prev) => [...prev, ...employeesData]);
+        setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
       }
-      setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
       setHasMore(querySnapshot.docs.length === PAGE_SIZE);
     } catch (error) {
       console.error("Error fetching employees:", error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Çalışanlar yüklenirken bir hata oluştu.",
+      })
     } finally {
       setIsLoading(false);
       loadingRef.current = false;
@@ -204,10 +213,26 @@ export default function EmployeesPage() {
     try {
       const employeeDoc = doc(db, "employees", id)
       await updateDoc(employeeDoc, updatedData)
-      fetchEmployees()
+      
+      // Mevcut employees listesini güncelleyelim
+      setEmployees(prevEmployees => 
+        prevEmployees.map(emp => 
+          emp.id === id ? { ...emp, ...updatedData } : emp
+        )
+      )
+      
       setIsEditOpen(false)
+      toast({
+        title: "Başarılı",
+        description: "Çalışan bilgileri güncellendi.",
+      })
     } catch (error) {
       console.error("Error editing employee:", error)
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Çalışan güncellenirken bir hata oluştu.",
+      })
     }
   }
 
@@ -245,9 +270,25 @@ export default function EmployeesPage() {
     try {
       const employeeDoc = doc(db, "employees", id)
       await updateDoc(employeeDoc, { status })
-      fetchEmployees()
+      
+      // Mevcut employees listesini güncelleyelim
+      setEmployees(prevEmployees => 
+        prevEmployees.map(emp => 
+          emp.id === id ? { ...emp, status } : emp
+        )
+      )
+      
+      toast({
+        title: "Başarılı",
+        description: `Çalışan durumu "${status}" olarak güncellendi.`,
+      })
     } catch (error) {
       console.error("Error updating status:", error)
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Durum güncellenirken bir hata oluştu.",
+      })
     }
   }
 
