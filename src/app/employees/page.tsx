@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
+import { createEmployeeStatusChangedNotification } from "@/lib/notifications"
 
 export interface Employee {
   id: string
@@ -286,6 +287,12 @@ export default function EmployeesPage() {
         timestamp: Timestamp.now(),
         changedBy: "System"
       })
+      
+      await createEmployeeStatusChangedNotification(
+        employee.email,
+        employee.name,
+        status
+      )
       
       // Mevcut employees listesini güncelleyelim
       setEmployees(prevEmployees => 

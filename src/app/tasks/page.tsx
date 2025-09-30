@@ -18,6 +18,7 @@ import { sampleTasks } from "@/lib/sample-data";
 
 import { AppLayout } from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { createTaskAssignedNotification, createTaskStatusChangedNotification } from "@/lib/notifications";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -185,6 +186,14 @@ export default function TasksPage() {
         status: "todo",
       };
       await addDoc(tasksCollectionRef, newTask);
+      
+      await createTaskAssignedNotification(
+        assignee.email,
+        assignee.name,
+        taskData.title,
+        "System"
+      );
+      
       fetchTasksAndEmployees();
       setIsAddOpen(false);
     } catch (error) {
@@ -220,8 +229,22 @@ export default function TasksPage() {
 
   const handleUpdateStatus = async (taskId: string, status: TaskStatus) => {
     try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
       const taskDoc = doc(db, "tasks", taskId);
       await updateDoc(taskDoc, { status });
+      
+      const assignee = employees.find(e => e.id === task.assigneeId);
+      if (assignee) {
+        await createTaskStatusChangedNotification(
+          assignee.email,
+          assignee.name,
+          task.title,
+          status
+        );
+      }
+      
       fetchTasksAndEmployees();
     } catch (error) {
       console.error("Error updating task status:", error);
