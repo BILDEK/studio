@@ -24,9 +24,9 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Legend } from "recharts"
 import type { ChartConfig } from "@/components/ui/chart"
-import { Boxes, ListTodo, Users } from "lucide-react"
+import { Boxes, ListTodo, Users, TrendingUp, AlertCircle } from "lucide-react"
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Firestore } from "firebase/firestore"
@@ -59,6 +59,13 @@ export default function DashboardPage() {
   const [activityLog, setActivityLog] = useState<Array<{ user: string; action: string; time: string }> | null>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+  
+  const [taskStatusData, setTaskStatusData] = useState<any[]>([])
+  const [employeeStatusData, setEmployeeStatusData] = useState<any[]>([])
+  const [taskPriorityData, setTaskPriorityData] = useState<any[]>([])
+  const [activeEmployees, setActiveEmployees] = useState<number>(0)
+  const [onLeaveEmployees, setOnLeaveEmployees] = useState<number>(0)
+  const [inactiveEmployees, setInactiveEmployees] = useState<number>(0)
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -68,6 +75,26 @@ export default function DashboardPage() {
         const employeesCollectionRef = collection(typedDb, "employees")
         const employeesSnapshot = await getDocs(employeesCollectionRef)
         setEmployeeCount(employeesSnapshot.size)
+        
+        let active = 0
+        let onLeave = 0
+        let inactive = 0
+        employeesSnapshot.forEach(doc => {
+          const data = doc.data()
+          if (data.status === "Active") active++
+          if (data.status === "On Leave") onLeave++
+          if (data.status === "Inactive") inactive++
+        })
+        
+        setActiveEmployees(active)
+        setOnLeaveEmployees(onLeave)
+        setInactiveEmployees(inactive)
+        
+        setEmployeeStatusData([
+          { name: "Active", value: active, fill: "#10b981" },
+          { name: "On Leave", value: onLeave, fill: "#f59e0b" },
+          { name: "Inactive", value: inactive, fill: "#ef4444" }
+        ])
 
         // Son eklenen çalışan (timestamp ile)
         const recentEmployeeQuery = query(employeesCollectionRef, orderBy("lastActivity", "desc"), limit(1))
@@ -104,15 +131,42 @@ export default function DashboardPage() {
         const tasksSnapshot = await getDocs(tasksCollectionRef)
         let openTasks = 0
         let overdueTasks = 0
+        let todoCount = 0
+        let inProgressCount = 0
+        let doneCount = 0
+        let highPriority = 0
+        let mediumPriority = 0
+        let lowPriority = 0
         const now = new Date()
+        
         tasksSnapshot.forEach(doc => {
           const data = doc.data()
-          if (data.status === "open") openTasks++
-          if (data.dueDate && data.status === "open" && data.dueDate.toDate?.() < now) overdueTasks++
+          if (data.status === "todo") todoCount++
+          if (data.status === "inProgress") inProgressCount++
+          if (data.status === "done") doneCount++
+          if (data.status !== "done") openTasks++
+          if (data.dueDate && data.status !== "done" && data.dueDate.toDate?.() < now) overdueTasks++
+          
+          if (data.priority === "High") highPriority++
+          if (data.priority === "Medium") mediumPriority++
+          if (data.priority === "Low") lowPriority++
         })
+        
         setOpenTasksCount(openTasks)
         setTotalTasksCount(tasksSnapshot.size)
         setOverdueTasksCount(overdueTasks)
+        
+        setTaskStatusData([
+          { name: "To Do", value: todoCount, fill: "#3b82f6" },
+          { name: "In Progress", value: inProgressCount, fill: "#f59e0b" },
+          { name: "Done", value: doneCount, fill: "#10b981" }
+        ])
+        
+        setTaskPriorityData([
+          { name: "High", value: highPriority, fill: "#ef4444" },
+          { name: "Medium", value: mediumPriority, fill: "#f59e0b" },
+          { name: "Low", value: lowPriority, fill: "#6b7280" }
+        ])
 
         // Recent Activity (from 'activity' collection)
         const activityCollectionRef = collection(typedDb, "activity")
@@ -155,11 +209,11 @@ export default function DashboardPage() {
     <AppLayout>
       <div className="flex flex-col gap-6">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {/* Skeletons for loading state */}
           {loading ? (
             <>
-              {[...Array(3)].map((_, i) => (
+              {[...Array(4)].map((_, i) => (
                 <Card key={i}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium bg-gray-200 rounded animate-pulse w-24 h-4" />
@@ -176,12 +230,12 @@ export default function DashboardPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <CardTitle className="text-sm font-medium">Employees</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{employeeCount ?? '-'}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {recentEmployee ? `Last added: ${recentEmployee.name} (${recentEmployee.addedAgo})` : '-'}
+                    {activeEmployees} active • {onLeaveEmployees} on leave
                   </p>
                 </CardContent>
               </Card>
@@ -200,49 +254,115 @@ export default function DashboardPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <ListTodo className="h-4 w-4 text-muted-foreground" />
-                  <CardTitle className="text-sm font-medium">Tasks</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalTasksCount !== null ? totalTasksCount : '-'}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {openTasksCount !== null ? `${openTasksCount} open` : 'Loading...'}<br />
-                    {overdueTasksCount !== null ? `${overdueTasksCount} overdue` : ''}
+                    {openTasksCount !== null ? `${openTasksCount} open tasks` : 'Loading...'}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">{overdueTasksCount !== null ? overdueTasksCount : '-'}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Requires immediate attention
                   </p>
                 </CardContent>
               </Card>
             </>
           )}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="lg:col-span-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
             <CardHeader>
-              <CardTitle>Task Completion Overview</CardTitle>
-              <CardDescription>
-                Number of tasks completed per month.
-              </CardDescription>
+              <CardTitle>Task Status Distribution</CardTitle>
+              <CardDescription>Current status of all tasks</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-                <BarChart accessibilityLayer data={chartData}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    tickMargin={10}
-                    axisLine={false}
-                    tickFormatter={(value) => value.slice(0, 3)}
-                  />
-                   <YAxis />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent />}
-                  />
-                  <Bar dataKey="tasks" fill="var(--color-tasks)" radius={4} />
-                </BarChart>
+            <CardContent className="flex items-center justify-center">
+              <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                <PieChart>
+                  <Pie
+                    data={taskStatusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name}: ${entry.value}`}
+                    outerRadius={80}
+                    dataKey="value"
+                  >
+                    {taskStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
               </ChartContainer>
             </CardContent>
           </Card>
-          <Card className="lg:col-span-3">
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Employee Status</CardTitle>
+              <CardDescription>Current employee availability</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-center">
+              <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                <PieChart>
+                  <Pie
+                    data={employeeStatusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name}: ${entry.value}`}
+                    outerRadius={80}
+                    dataKey="value"
+                  >
+                    {employeeStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Task Priority</CardTitle>
+              <CardDescription>Priority distribution of tasks</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-center">
+              <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                <PieChart>
+                  <Pie
+                    data={taskPriorityData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name}: ${entry.value}`}
+                    outerRadius={80}
+                    dataKey="value"
+                  >
+                    {taskPriorityData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-1">
+          <Card>
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
               <CardDescription>
