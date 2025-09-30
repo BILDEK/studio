@@ -8,6 +8,31 @@ VerdantFlow is a comprehensive business management application designed to strea
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Features (Latest Update)
+
+### Employee Management
+- **Search Functionality**: Real-time search by name, role, or email with instant filtering
+- **Status History Tracking**: Complete audit trail of employee status changes with timestamps
+- **Advanced Filtering**: Filter employees by status (Active/On Leave/Inactive) and role
+- **Multi-field Sorting**: Sort by name, role, status, or last activity with ascending/descending order
+
+### Task Management  
+- **Comprehensive Filtering**: Search, priority, assignee, and due date filters with "Clear All" functionality
+- **Notification System**: Automated notifications for task assignments and status changes
+
+### Dashboard Analytics
+- **Statistical Overview**: Total employees, tasks, inventory, and overdue task counts
+- **Visual Analytics**: Pie charts showing:
+  - Task status distribution (To Do, In Progress, Done)
+  - Employee status breakdown (Active, On Leave, Inactive)  
+  - Task priority distribution (High, Medium, Low)
+- **Real-time Metrics**: Active employee count and open task monitoring
+
+### Notification Infrastructure
+- Centralized notification system tracking task assignments, status changes, and employee updates
+- Database-backed notification storage for future email integration
+- Support for Resend/SendGrid email service integration (ready for API key setup)
+
 ## System Architecture
 
 ### Frontend Architecture
@@ -34,6 +59,8 @@ Preferred communication style: Simple, everyday language.
 - `employees`: Staff management with roles, status tracking, and profile information
 - `tasks`: Project management with assignees, priorities, due dates, and kanban-style sections
 - `products`: Inventory management with stock levels, categories, and status tracking
+- `statusHistory`: Historical tracking of employee status changes with timestamps and user attribution
+- `notifications`: Notification system for task assignments, status changes, and employee updates
 - User authentication data managed by Firebase Auth
 
 ### Theme Management
