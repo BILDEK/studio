@@ -2,6 +2,7 @@
 "use client"
 
 import * as React from "react"
+import { useState, useEffect } from "react"
 import type { Employee } from "@/app/employees/page"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +15,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Separator } from "./ui/separator"
+import { collection, query, where, orderBy, getDocs, Timestamp } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Clock } from "lucide-react"
+
+interface StatusHistory {
+  id: string
+  employeeId: string
+  employeeName: string
+  previousStatus: string
+  newStatus: string
+  timestamp: Date
+  changedBy: string
+}
 
 interface EmployeeDetailsDialogProps {
   employee: Employee
@@ -26,6 +41,41 @@ export function EmployeeDetailsDialog({
   isOpen,
   onOpenChange,
 }: EmployeeDetailsDialogProps) {
+  const [statusHistory, setStatusHistory] = useState<StatusHistory[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+
+  useEffect(() => {
+    if (isOpen && employee.id) {
+      fetchStatusHistory()
+    }
+  }, [isOpen, employee.id])
+
+  const fetchStatusHistory = async () => {
+    setIsLoadingHistory(true)
+    try {
+      const historyRef = collection(db, "statusHistory")
+      const q = query(
+        historyRef,
+        where("employeeId", "==", employee.id),
+        orderBy("timestamp", "desc")
+      )
+      const querySnapshot = await getDocs(q)
+      const historyData = querySnapshot.docs.map((doc) => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toDate() : new Date(data.timestamp)
+        } as StatusHistory
+      })
+      setStatusHistory(historyData)
+    } catch (error) {
+      console.error("Error fetching status history:", error)
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Active":
@@ -102,6 +152,40 @@ export function EmployeeDetailsDialog({
             </span>
           </div>
         </div>
+
+        <Separator className="my-4" />
+        
+        <div>
+          <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Status History
+          </h3>
+          {isLoadingHistory ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Loading history...</p>
+          ) : statusHistory.length > 0 ? (
+            <ScrollArea className="h-[200px] rounded-md border p-3">
+              <div className="space-y-3">
+                {statusHistory.map((history) => (
+                  <div key={history.id} className="text-sm border-l-2 border-primary/20 pl-3 pb-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground line-through">{history.previousStatus}</span>
+                        <span>→</span>
+                        {getStatusBadge(history.newStatus)}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {history.timestamp.toLocaleString()} • by {history.changedBy}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">No status changes recorded.</p>
+          )}
+        </div>
+
         <Button onClick={() => onOpenChange(false)} className="mt-4 w-full">
           Close
         </Button>

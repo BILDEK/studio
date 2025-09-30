@@ -270,8 +270,22 @@ export default function EmployeesPage() {
 
   const handleSetStatus = async (id: string, status: "Active" | "On Leave" | "Inactive") => {
     try {
+      const employee = employees.find(emp => emp.id === id)
+      if (!employee) return
+
       const employeeDoc = doc(db, "employees", id)
       await updateDoc(employeeDoc, { status })
+      
+      // Durum geçmişine kayıt ekle
+      const statusHistoryRef = collection(db, "statusHistory")
+      await addDoc(statusHistoryRef, {
+        employeeId: id,
+        employeeName: employee.name,
+        previousStatus: employee.status,
+        newStatus: status,
+        timestamp: Timestamp.now(),
+        changedBy: "System"
+      })
       
       // Mevcut employees listesini güncelleyelim
       setEmployees(prevEmployees => 
