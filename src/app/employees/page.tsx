@@ -38,7 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { MoreHorizontal, PlusCircle } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Search } from "lucide-react"
 import { AddEmployeeForm } from "@/components/add-employee-form"
 import { EditEmployeeForm } from "@/components/edit-employee-form"
 import { EmployeeDetailsDialog } from "@/components/employee-details-dialog"
@@ -53,6 +53,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { Input } from "@/components/ui/input"
 
 export interface Employee {
   id: string
@@ -120,6 +121,7 @@ export default function EmployeesPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
 
   const PAGE_SIZE = 20;
   const loadingRef = useRef(false);
@@ -312,6 +314,15 @@ export default function EmployeesPage() {
     return activity
   }
 
+  const filteredEmployees = employees.filter((employee) => {
+    const matchesSearch = 
+      employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      employee.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      employee.email.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    return matchesSearch
+  })
+
   return (
     <AppLayout>
       <div className="flex flex-col gap-4">
@@ -335,6 +346,17 @@ export default function EmployeesPage() {
             <CardDescription>View, manage, and track your team members.</CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, role, or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -354,8 +376,8 @@ export default function EmployeesPage() {
                       Loading employees...
                     </TableCell>
                   </TableRow>
-                ) : employees.length > 0 ? (
-                  employees.map((employee) => (
+                ) : filteredEmployees.length > 0 ? (
+                  filteredEmployees.map((employee) => (
                     <TableRow key={employee.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -463,7 +485,7 @@ export default function EmployeesPage() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
-                      No employees found.
+                      {searchQuery ? `No employees found matching "${searchQuery}".` : "No employees found."}
                     </TableCell>
                   </TableRow>
                 )}
