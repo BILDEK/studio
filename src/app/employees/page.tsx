@@ -38,7 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { MoreHorizontal, PlusCircle, Search } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Search, ArrowUpDown, X } from "lucide-react"
 import { AddEmployeeForm } from "@/components/add-employee-form"
 import { EditEmployeeForm } from "@/components/edit-employee-form"
 import { EmployeeDetailsDialog } from "@/components/employee-details-dialog"
@@ -55,6 +55,13 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
 import { createEmployeeStatusChangedNotification } from "@/lib/notifications"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export interface Employee {
   id: string
@@ -123,6 +130,10 @@ export default function EmployeesPage() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [roleFilter, setRoleFilter] = useState<string>("all")
+  const [sortBy, setSortBy] = useState<"name" | "role" | "status" | "lastActivity">("lastActivity")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
   const PAGE_SIZE = 20;
   const loadingRef = useRef(false);
@@ -335,14 +346,46 @@ export default function EmployeesPage() {
     return activity
   }
 
+  const uniqueRoles = Array.from(new Set(employees.map(emp => emp.role)))
+
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch = 
       employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employee.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employee.email.toLowerCase().includes(searchQuery.toLowerCase())
     
-    return matchesSearch
+    const matchesStatus = statusFilter === "all" || employee.status === statusFilter
+    const matchesRole = roleFilter === "all" || employee.role === roleFilter
+    
+    return matchesSearch && matchesStatus && matchesRole
   })
+
+  const sortedEmployees = [...filteredEmployees].sort((a, b) => {
+    let aValue: any = a[sortBy]
+    let bValue: any = b[sortBy]
+
+    if (sortBy === "lastActivity") {
+      aValue = aValue instanceof Date ? aValue.getTime() : 0
+      bValue = bValue instanceof Date ? bValue.getTime() : 0
+    } else {
+      aValue = String(aValue).toLowerCase()
+      bValue = String(bValue).toLowerCase()
+    }
+
+    if (sortOrder === "asc") {
+      return aValue > bValue ? 1 : -1
+    } else {
+      return aValue < bValue ? 1 : -1
+    }
+  })
+
+  const hasActiveFilters = searchQuery || statusFilter !== "all" || roleFilter !== "all"
+
+  const clearAllFilters = () => {
+    setSearchQuery("")
+    setStatusFilter("all")
+    setRoleFilter("all")
+  }
 
   return (
     <AppLayout>
@@ -367,15 +410,68 @@ export default function EmployeesPage() {
             <CardDescription>View, manage, and track your team members.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, role, or email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="mb-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, role, or email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="On Leave">On Leave</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="All Roles" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    {uniqueRoles.map(role => (
+                      <SelectItem key={role} value={role}>{role}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">Sort by Name</SelectItem>
+                    <SelectItem value="role">Sort by Role</SelectItem>
+                    <SelectItem value="status">Sort by Status</SelectItem>
+                    <SelectItem value="lastActivity">Sort by Activity</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                  title={sortOrder === "asc" ? "Ascending" : "Descending"}
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                </Button>
+                {hasActiveFilters && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="gap-1"
+                  >
+                    <X className="h-4 w-4" /> Clear
+                  </Button>
+                )}
               </div>
             </div>
             <Table>
@@ -397,8 +493,8 @@ export default function EmployeesPage() {
                       Loading employees...
                     </TableCell>
                   </TableRow>
-                ) : filteredEmployees.length > 0 ? (
-                  filteredEmployees.map((employee) => (
+                ) : sortedEmployees.length > 0 ? (
+                  sortedEmployees.map((employee) => (
                     <TableRow key={employee.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
