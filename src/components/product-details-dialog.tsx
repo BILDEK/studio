@@ -27,7 +27,8 @@ export function ProductDetailsDialog({
   onOpenChange,
 }: ProductDetailsDialogProps) {
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    // Badge logic remains the same
+     switch (status) {
       case "In Stock":
         return <Badge className="bg-green-100 text-green-800 border-green-200">{status}</Badge>
       case "Low Stock":
@@ -55,7 +56,6 @@ export function ProductDetailsDialog({
             height="128"
             src={product.image}
             width="128"
-            data-ai-hint="product image"
           />
           <div className="text-center">
             <h2 className="text-xl font-semibold">{product.name}</h2>
@@ -75,6 +75,10 @@ export function ProductDetailsDialog({
           <div className="grid grid-cols-3 items-center gap-2">
             <span className="font-medium text-muted-foreground">Stock</span>
             <span className="col-span-2">{product.stock} units</span>
+          </div>
+           <div className="grid grid-cols-3 items-center gap-2">
+            <span className="font-medium text-muted-foreground">Low Stock At</span>
+            <span className="col-span-2">{product.lowStockThreshold} units</span>
           </div>
         </div>
         <Button onClick={() => onOpenChange(false)} className="mt-4 w-full">
