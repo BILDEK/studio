@@ -8,6 +8,7 @@ import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 
 import type { Employee } from "@/app/employees/page"
+import type { Task } from "@/app/tasks/page"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -48,6 +49,7 @@ const addTaskSchema = z.object({
   assigneeId: z.string().min(1, "Please select an assignee."),
   dueDate: z.date({ required_error: "A due date is required." }),
   priority: z.enum(["Low", "Medium", "High"]),
+  dependsOn: z.array(z.string()).optional(),
 })
 
 export type TaskFormValues = z.infer<typeof addTaskSchema>
@@ -57,6 +59,7 @@ interface AddTaskFormProps {
   onOpenChange: (isOpen: boolean) => void
   onAddTask: (taskData: TaskFormValues) => void
   employees: Employee[]
+  tasks: Task[]
 }
 
 export function AddTaskForm({
@@ -64,6 +67,7 @@ export function AddTaskForm({
   onOpenChange,
   onAddTask,
   employees,
+  tasks,
 }: AddTaskFormProps) {
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(addTaskSchema),
@@ -72,6 +76,7 @@ export function AddTaskForm({
       description: "",
       assigneeId: "",
       priority: "Medium",
+      dependsOn: [],
     },
   })
 
@@ -204,6 +209,31 @@ export function AddTaskForm({
                       />
                     </PopoverContent>
                   </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="dependsOn"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Depends On</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select tasks" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {tasks.map((task) => (
+                        <SelectItem key={task.id} value={task.id}>
+                          {task.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
