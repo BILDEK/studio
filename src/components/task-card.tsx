@@ -74,15 +74,19 @@ export function TaskCard({ task, onEdit, onDelete, onStatusChange }: TaskCardPro
           </div>
           <div className="flex items-center space-x-2">
              <Avatar className="h-6 w-6">
-               <AvatarImage src={avatar} alt={assignee} />
-               <AvatarFallback>{assignee.charAt(0)}</AvatarFallback>
+               <AvatarImage src={avatar} alt={assignee || 'Unassigned'} />
+               <AvatarFallback>{assignee ? assignee.charAt(0) : 'U'}</AvatarFallback>
              </Avatar>
-            <span className="text-sm">{assignee}</span>
+            <span className="text-sm">{assignee || 'Unassigned'}</span>
           </div>
         </div>
         <div className="flex items-center mt-4 text-sm text-gray-400">
-            <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {dueDate ? (
             <span>{format(new Date(dueDate), "MMM d, yyyy")}</span>
+          ) : (
+            <span>No due date</span>
+          )}
         </div>
       </CardContent>
     </Card>
