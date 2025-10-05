@@ -11,9 +11,8 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth"
-import { auth, db, storage } from "@/lib/firebase"
+import { auth, db } from "@/lib/firebase" // Removed 'storage'
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -91,34 +90,60 @@ function AccountSettings() {
     return () => unsubscribe()
   }, [])
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file || !user) return
 
+    // Optional: Check file size to avoid huge base64 strings
+    if (file.size > 1024 * 1024) { // 1MB limit
+        toast({
+            variant: "destructive",
+            title: "File too large",
+            description: "Please select an image smaller than 1MB.",
+        });
+        return;
+    }
+
     setIsUploadingAvatar(true)
-    try {
-      const storageRef = ref(storage, `avatars/${user.uid}/${file.name}`)
-      const uploadResult = await uploadBytes(storageRef, file)
-      const downloadURL = await getDownloadURL(uploadResult.ref)
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onloadend = async () => {
+        try {
+            const dataUrl = reader.result as string
 
-      // Update Firebase Auth profile
-      await updateProfile(user, { photoURL: downloadURL })
+            // Update Firebase Auth profile
+            await updateProfile(user, { photoURL: dataUrl })
 
-      // Update Firestore document
-      if (employeeDocId) {
-        const userDocRef = doc(db, "employees", employeeDocId)
-        await updateDoc(userDocRef, { avatar: downloadURL })
-      }
-      
-      // Force re-render to show new avatar
-      setUser({ ...user, photoURL: downloadURL })
+            // Update Firestore document
+            if (employeeDocId) {
+                try {
+                    const userDocRef = doc(db, "employees", employeeDocId)
+                    await updateDoc(userDocRef, { avatar: dataUrl })
+                } catch (e) {
+                   try {
+                        const userDocRef = doc(db, "test0", employeeDocId);
+                        await updateDoc(userDocRef, { avatar: dataUrl });
+                    } catch(e2) {
+                        console.error("Could not find document to update avatar in either collection.");
+                    }
+                }
+            }
+            
+            // Force re-render to show new avatar
+            setUser({ ...user, photoURL: dataUrl })
 
-      toast({ title: "Success", description: "Avatar updated successfully!" })
-    } catch (error) {
-      console.error("Error uploading avatar:", error)
-      toast({ variant: "destructive", title: "Upload Failed", description: "There was an error uploading your avatar." })
-    } finally {
-      setIsUploadingAvatar(false)
+            toast({ title: "Success", description: "Avatar updated successfully!" })
+        } catch (error) {
+            console.error("Error updating profile with new avatar:", error)
+            toast({ variant: "destructive", title: "Update Failed", description: "There was an error saving your new avatar." })
+        } finally {
+            setIsUploadingAvatar(false)
+        }
+    }
+    reader.onerror = () => {
+        console.error("Error reading file:", reader.error)
+        toast({ variant: "destructive", title: "Read Failed", description: "Could not read the selected file." })
+        setIsUploadingAvatar(false)
     }
   }
 
