@@ -1,16 +1,19 @@
+
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, useRef, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import {
   type User,
   onAuthStateChanged,
+  updateProfile,
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth"
-import { auth, db } from "@/lib/firebase"
+import { auth, db, storage } from "@/lib/firebase"
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -27,19 +30,20 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Moon, Sun, Monitor } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Loader2, Moon, Sun, Monitor, Upload } from "lucide-react"
 
 function AccountSettings() {
   const { toast } = useToast()
   const [user, setUser] = useState<User | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [employeeDocId, setEmployeeDocId] = useState<string | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -87,6 +91,37 @@ function AccountSettings() {
     return () => unsubscribe()
   }, [])
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !user) return
+
+    setIsUploadingAvatar(true)
+    try {
+      const storageRef = ref(storage, `avatars/${user.uid}/${file.name}`)
+      const uploadResult = await uploadBytes(storageRef, file)
+      const downloadURL = await getDownloadURL(uploadResult.ref)
+
+      // Update Firebase Auth profile
+      await updateProfile(user, { photoURL: downloadURL })
+
+      // Update Firestore document
+      if (employeeDocId) {
+        const userDocRef = doc(db, "employees", employeeDocId)
+        await updateDoc(userDocRef, { avatar: downloadURL })
+      }
+      
+      // Force re-render to show new avatar
+      setUser({ ...user, photoURL: downloadURL })
+
+      toast({ title: "Success", description: "Avatar updated successfully!" })
+    } catch (error) {
+      console.error("Error uploading avatar:", error)
+      toast({ variant: "destructive", title: "Upload Failed", description: "There was an error uploading your avatar." })
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
+
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) {
@@ -101,9 +136,10 @@ function AccountSettings() {
     setIsSubmitting(true)
 
     try {
-      if (employeeDocId) {
+      if (employeeDocId && name !== (user.displayName || "")) {
         const userDocRef = doc(db, "employees", employeeDocId)
         await updateDoc(userDocRef, { name: name })
+        await updateProfile(user, { displayName: name })
         toast({
           title: "Success",
           description: "Your name has been updated.",
@@ -111,10 +147,7 @@ function AccountSettings() {
       }
 
       if (newPassword && currentPassword) {
-        const credential = EmailAuthProvider.credential(
-          user.email!,
-          currentPassword
-        )
+        const credential = EmailAuthProvider.credential(user.email!, currentPassword)
         await reauthenticateWithCredential(user, credential)
         await updatePassword(user, newPassword)
         toast({
@@ -147,13 +180,9 @@ function AccountSettings() {
     }
   }
 
-  const getInitials = (name: string | null) => {
-    if (!name) return ""
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
+  const getInitials = (nameStr: string | null) => {
+    if (!nameStr) return ""
+    return nameStr.split(" ").map((n) => n[0]).join("").toUpperCase()
   }
 
   return (
@@ -167,18 +196,16 @@ function AccountSettings() {
       <CardContent>
         <div className="flex flex-col items-center gap-4 sm:flex-row">
           <Avatar className="h-24 w-24">
-            <AvatarImage
-              src={user?.photoURL || "https://placehold.co/100x100.png"}
-              alt="@user"
-              data-ai-hint="profile picture"
-            />
+            <AvatarImage src={user?.photoURL || undefined} alt="@user" />
             <AvatarFallback>{getInitials(name)}</AvatarFallback>
           </Avatar>
+           <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/*" style={{ display: "none" }} />
           <div className="flex-1 text-center sm:text-left">
             <h2 className="text-xl font-bold">{name || "No Name"}</h2>
             <p className="text-muted-foreground">{user?.email}</p>
-            <Button variant="outline" size="sm" className="mt-2" disabled>
-              Change Avatar
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => avatarInputRef.current?.click()} disabled={isUploadingAvatar}>
+                {isUploadingAvatar ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />} 
+                Change Avatar
             </Button>
           </div>
         </div>
@@ -224,19 +251,11 @@ function AccountSettings() {
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => {
-                /* maybe reset form */
-              }}
-            >
+            <Button variant="outline" type="button" onClick={() => { /* reset */ }}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>
           </div>
@@ -247,7 +266,8 @@ function AccountSettings() {
 }
 
 function AppearanceSettings() {
-  const [activeTheme, setActiveTheme] = useState("light")
+  // ... (unchanged)
+    const [activeTheme, setActiveTheme] = useState("light")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
