@@ -4,7 +4,7 @@ import type { Task } from "@/app/tasks/page";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, CalendarIcon } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuTrigger, 
@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { format } from 'date-fns';
 
 interface TaskCardProps {
   task: Task;
@@ -32,7 +33,7 @@ const priorityStyles: { [key in Task['priority']]: string } = {
 };
 
 export function TaskCard({ task, onEdit, onDelete, onStatusChange }: TaskCardProps) {
-  const { title, description, status, priority, dueDate, assignee, avatar } = task;
+  const { title, description, priority, dueDate, assignee, avatar } = task;
   const statusOptions: Task['status'][] = ["To Do", "In Progress", "Done", "Blocked"];
 
   return (
@@ -79,8 +80,9 @@ export function TaskCard({ task, onEdit, onDelete, onStatusChange }: TaskCardPro
             <span className="text-sm">{assignee}</span>
           </div>
         </div>
-         <div className="flex items-center mt-4">
-            <Badge variant="outline" className="border-gray-600 text-gray-300">{status}</Badge>
+        <div className="flex items-center mt-4 text-sm text-gray-400">
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            <span>{format(new Date(dueDate), "MMM d, yyyy")}</span>
         </div>
       </CardContent>
     </Card>
