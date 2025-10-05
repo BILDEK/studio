@@ -4,9 +4,18 @@ import type { Task } from "@/app/tasks/page";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { MoreHorizontal } from "lucide-react";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { 
+  DropdownMenu, 
+  DropdownMenuTrigger, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSub, 
+  DropdownMenuSubTrigger, 
+  DropdownMenuSubContent, 
+  DropdownMenuPortal, 
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 interface TaskCardProps {
@@ -37,8 +46,21 @@ export function TaskCard({ task, onEdit, onDelete, onStatusChange }: TaskCardPro
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700 text-white">
-            <DropdownMenuItem onClick={() => onEdit(task)} className="hover:bg-gray-700">Edit</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(task.id)} className="text-red-500 hover:bg-red-500 hover:text-white">Delete</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEdit(task)} className="hover:bg-gray-700 cursor-pointer">Edit</DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="hover:bg-gray-700 cursor-pointer">Change Status</DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent className="bg-gray-800 border-gray-700 text-white">
+                  {statusOptions.map(option => (
+                    <DropdownMenuItem key={option} onClick={() => onStatusChange(task.id, option)} className="hover:bg-gray-700 cursor-pointer">
+                      {option}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator className="bg-gray-700" />
+            <DropdownMenuItem onClick={() => onDelete(task.id)} className="text-red-500 hover:bg-red-500 hover:text-white cursor-pointer">Delete</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </CardHeader>
@@ -57,17 +79,8 @@ export function TaskCard({ task, onEdit, onDelete, onStatusChange }: TaskCardPro
             <span className="text-sm">{assignee}</span>
           </div>
         </div>
-        <div className="mt-4">
-          <Select value={status} onValueChange={(newStatus: Task['status']) => onStatusChange(task.id, newStatus)}>
-            <SelectTrigger className="w-full bg-gray-700 border-gray-600 focus:ring-blue-500">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-gray-800 border-gray-700 text-white">
-              {statusOptions.map(option => (
-                <SelectItem key={option} value={option} className="hover:bg-gray-700">{option}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+         <div className="flex items-center mt-4">
+            <Badge variant="outline" className="border-gray-600 text-gray-300">{status}</Badge>
         </div>
       </CardContent>
     </Card>
