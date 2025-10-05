@@ -18,7 +18,7 @@ import {
   DropdownMenuSubContent, 
   DropdownMenuCheckboxItem
 } from "@/components/ui/dropdown-menu"
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, Filter, X } from "lucide-react"
+import { PlusCircle, Search, Filter, X } from "lucide-react"
 import { AddTaskForm, TaskFormValues } from "@/components/add-task-form"
 import { EditTaskForm } from "@/components/edit-task-form"
 import type { Employee } from "@/app/employees/page"
@@ -33,8 +33,6 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle
 } from "@/components/ui/alert-dialog"
-import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { TaskCard } from "@/components/task-card"
 import { Badge } from "@/components/ui/badge";
 
@@ -90,9 +88,9 @@ export default function TasksPage() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState<{status: string[], priority: string[], assignee: string[]}>({ status: [], priority: [], assignee: [] });
+  const [filters, setFilters] = useState<{priority: string[], assignee: string[]}>({ priority: [], assignee: [] });
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
-  const [activeStatus, setActiveStatus] = useState<Task['status'] | 'All'>('All');
+  const [activeStatus, setActiveStatus] = useState<Task['status'] | 'All'>('To Do');
 
   // --- DATA FETCHING LOGIC ---
   const fetchTasksAndEmployees = useCallback(async () => {
@@ -123,9 +121,7 @@ export default function TasksPage() {
 
         const comments = commentsSnapshot.docs.map(doc => {
             const commentData = doc.data();
-            const timestamp = commentData.timestamp instanceof Timestamp
-                ? commentData.timestamp.toDate()
-                : new Date(); 
+            const timestamp = commentData.timestamp instanceof Timestamp ? commentData.timestamp.toDate() : new Date(); 
             return { ...commentData, id: doc.id, timestamp } as Comment;
         });
 
@@ -168,47 +164,26 @@ export default function TasksPage() {
 
   // --- FILTERING LOGIC ---
   const filteredTasks = useMemo(() => {
-    let filtered = tasks
+    return tasks
+      .filter(task => activeStatus === 'All' || task.status === activeStatus)
       .filter(task => task.title.toLowerCase().includes(searchTerm.toLowerCase()))
       .filter(task => filters.priority.length === 0 || filters.priority.includes(task.priority))
       .filter(task => filters.assignee.length === 0 || filters.assignee.includes(task.assigneeId));
-    
-    const combinedStatusFilters = [...filters.status];
-    if (activeStatus !== 'All' && !combinedStatusFilters.includes(activeStatus)) {
-        combinedStatusFilters.push(activeStatus);
-    }
-
-    if (combinedStatusFilters.length > 0) {
-        if (activeStatus !== 'All' && filters.status.length === 0) {
-             filtered = filtered.filter(task => task.status === activeStatus);
-        } else {
-             filtered = filtered.filter(task => combinedStatusFilters.includes(task.status));
-        }
-    }
-    
-    return filtered;
-  }, [tasks, searchTerm, filters, activeStatus]);
+  }, [tasks, activeStatus, searchTerm, filters]);
 
 
   // --- CRUD HANDLERS ---
   const handleAddOrEditTask = async (taskData: TaskFormValues, taskId?: string) => {
     const isEditing = !!taskId;
     try {
-      const docData = {
-        ...taskData,
-        dueDate: Timestamp.fromDate(taskData.dueDate),
-      };
-
+      const docData = { ...taskData, dueDate: Timestamp.fromDate(taskData.dueDate) };
       if (isEditing) {
         await updateDoc(doc(db, "tasks", taskId), docData);
       } else {
         await addDoc(tasksCollectionRef, { ...docData, status: "To Do" });
       }
-      
-      await fetchTasksAndEmployees(); // <-- RE-FETCH DATA
-      setIsAddOpen(false);
-      setIsEditOpen(false);
-      setSelectedTask(null);
+      await fetchTasksAndEmployees();
+      setIsAddOpen(false); setIsEditOpen(false); setSelectedTask(null);
     } catch (error) {
       console.error(`Error ${isEditing ? 'editing' : 'adding'} task:`, error);
     }
@@ -220,21 +195,14 @@ export default function TasksPage() {
       const subTasksCollectionRef = collection(db, "tasks", taskId, "subTasks");
       const existingSubTasksSnapshot = await getDocs(subTasksCollectionRef);
       const existingSubTaskIds = new Set(existingSubTasksSnapshot.docs.map(d => d.id));
-
       for (const subTask of subTasksToUpdate) {
-        const subTaskRef = subTask.id.startsWith('temp-') 
-          ? doc(subTasksCollectionRef) 
-          : doc(subTasksCollectionRef, subTask.id);
+        const subTaskRef = subTask.id.startsWith('temp-') ? doc(subTasksCollectionRef) : doc(subTasksCollectionRef, subTask.id);
         batch.set(subTaskRef, { ...subTask, parentId: taskId, id: subTaskRef.id });
         existingSubTaskIds.delete(subTask.id);
       }
-
-      existingSubTaskIds.forEach(idToDelete => {
-        batch.delete(doc(subTasksCollectionRef, idToDelete));
-      });
-
+      existingSubTaskIds.forEach(idToDelete => batch.delete(doc(subTasksCollectionRef, idToDelete)));
       await batch.commit();
-      await fetchTasksAndEmployees(); // <-- RE-FETCH DATA
+      await fetchTasksAndEmployees();
     } catch (error) {
       console.error("Error updating sub-tasks: ", error);
     }
@@ -243,15 +211,8 @@ export default function TasksPage() {
   const handleAddComment = async (taskId: string, commentText: string, attachments: { name: string, url: string }[]) => {
     if (!currentUser) return;
     try {
-      await addDoc(collection(db, "tasks", taskId, "comments"), {
-        authorId: currentUser.id,
-        authorName: currentUser.name,
-        authorAvatar: currentUser.avatar,
-        text: commentText,
-        timestamp: Timestamp.now(),
-        attachments: attachments,
-      });
-      await fetchTasksAndEmployees(); // <-- RE-FETCH DATA
+      await addDoc(collection(db, "tasks", taskId, "comments"), { authorId: currentUser.id, authorName: currentUser.name, authorAvatar: currentUser.avatar, text: commentText, timestamp: Timestamp.now(), attachments: attachments });
+      await fetchTasksAndEmployees();
     } catch (error) {
       console.error("Error adding comment: ", error);
     }
@@ -261,9 +222,8 @@ export default function TasksPage() {
     if (!selectedTask) return;
     try {
       await deleteDoc(doc(db, "tasks", selectedTask.id));
-      await fetchTasksAndEmployees(); // <-- RE-FETCH DATA
-      setIsDeleteAlertOpen(false);
-      setSelectedTask(null);
+      await fetchTasksAndEmployees();
+      setIsDeleteAlertOpen(false); setSelectedTask(null);
     } catch (error) {
       console.error("Error deleting task: ", error);
     }
@@ -272,17 +232,13 @@ export default function TasksPage() {
   const handleStatusChange = async (taskId: string, status: Task['status']) => {
     try {
       await updateDoc(doc(db, "tasks", taskId), { status });
-      await fetchTasksAndEmployees(); // <-- RE-FETCH DATA
+      await fetchTasksAndEmployees();
     } catch (error) {
       console.error("Error updating status: ", error);
     }
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    // Reordering logic can be implemented here if needed
-  };
-
-  const toggleFilter = (category: 'status' | 'priority' | 'assignee', value: string) => {
+  const toggleFilter = (category: 'priority' | 'assignee', value: string) => {
     setFilters(prev => {
         const newFilter = { ...prev };
         const current = newFilter[category] as string[];
@@ -295,109 +251,69 @@ export default function TasksPage() {
     });
   };
   
-  const statusTabs: (Task['status'] | 'All')[] = ['All', 'To Do', 'In Progress', 'Done', 'Blocked'];
+  const statusTabs: Task['status'][] = ['To Do', 'In Progress', 'Done', 'Blocked'];
 
   // --- RENDER LOGIC ---
   return (
     <AppLayout>
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Tasks</h1>
-          <Button onClick={() => setIsAddOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Task</Button>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <div className="relative w-full max-w-sm">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search tasks..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8" />
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <h1 className="text-2xl font-semibold shrink-0">Tasks</h1>
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+            <div className="relative w-full">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search tasks..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8" />
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild><Button variant="outline" className="flex items-center gap-2 w-full sm:w-auto"><Filter className="h-4 w-4" />Filter</Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Filter By</DropdownMenuLabel><DropdownMenuSeparator />
+                      <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>Priority</DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                              {["Low", "Medium", "High"].map(p => (<DropdownMenuCheckboxItem key={p} checked={filters.priority.includes(p)} onSelect={(e) => e.preventDefault()} onClick={() => toggleFilter('priority', p)}>{p}</DropdownMenuCheckboxItem>))}
+                          </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                      <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>Assignee</DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                              {employees.map(e => (<DropdownMenuCheckboxItem key={e.id} checked={filters.assignee.includes(e.id)} onSelect={(e) => e.preventDefault()} onClick={() => toggleFilter('assignee', e.id)}>{e.name}</DropdownMenuCheckboxItem>))}
+                          </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                       {(filters.priority.length > 0 || filters.assignee.length > 0) && <><DropdownMenuSeparator /><DropdownMenuItem onClick={() => setFilters({ priority: [], assignee: [] })} className="text-destructive">Clear Filters</DropdownMenuItem></>}
+                  </DropdownMenuContent>
+              </DropdownMenu>
+               <Button onClick={() => setIsAddOpen(true)} className="w-full sm:w-auto"><PlusCircle className="mr-2 h-4 w-4" /> Add Task</Button>
+            </div>
           </div>
-          <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                      <Filter className="h-4 w-4" />
-                      Filter
-                  </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Filter By</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>Status</DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                          {["To Do", "In Progress", "Done", "Blocked"].map(status => (
-                              <DropdownMenuCheckboxItem key={status} checked={filters.status.includes(status)} onSelect={(e) => e.preventDefault()} onClick={() => toggleFilter('status', status)}>{status}</DropdownMenuCheckboxItem>
-                          ))}
-                      </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>Priority</DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                          {["Low", "Medium", "High"].map(p => (
-                             <DropdownMenuCheckboxItem key={p} checked={filters.priority.includes(p)} onSelect={(e) => e.preventDefault()} onClick={() => toggleFilter('priority', p)}>{p}</DropdownMenuCheckboxItem>
-                          ))}
-                      </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>Assignee</DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                          {employees.map(e => (
-                             <DropdownMenuCheckboxItem key={e.id} checked={filters.assignee.includes(e.id)} onSelect={(e) => e.preventDefault()} onClick={() => toggleFilter('assignee', e.id)}>{e.name}</DropdownMenuCheckboxItem>
-                          ))}
-                      </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                   {(filters.status.length > 0 || filters.priority.length > 0 || filters.assignee.length > 0) &&
-                      <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setFilters({ status: [], priority: [], assignee: [] })} className="text-destructive">Clear Filters</DropdownMenuItem>
-                      </>
-                  }
-              </DropdownMenuContent>
-          </DropdownMenu>
+        </div>
+
+        <div className="flex justify-center items-center gap-2 flex-wrap p-2 bg-muted/50 rounded-lg">
+            {statusTabs.map(status => (<Button key={status} variant={activeStatus === status ? 'default' : 'ghost'} onClick={() => setActiveStatus(status)} className="capitalize px-4 py-2 h-auto">{status}</Button>))}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {filters.status.map(f => <Badge key={f} variant="outline" className="pr-1">Status: {f} <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => toggleFilter("status", f)}/></Badge>)}
           {filters.priority.map(f => <Badge key={f} variant="outline" className="pr-1">Priority: {f} <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => toggleFilter("priority", f)}/></Badge>)}
           {filters.assignee.map(f => <Badge key={f} variant="outline" className="pr-1">Assignee: {employees.find(e=>e.id === f)?.name} <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => toggleFilter("assignee", f)}/></Badge>)}
-        </div>
-
-        <div className="border-b border-border">
-          <div className="flex items-center gap-2">
-            {statusTabs.map(status => (
-              <Button 
-                key={status} 
-                variant={activeStatus === status ? 'secondary' : 'ghost'} 
-                onClick={() => setActiveStatus(status)}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none"
-                data-state={activeStatus === status ? 'active' : 'inactive'}
-              >
-                {status}
-              </Button>
-            ))}
-          </div>
         </div>
 
         {isLoading ? (
           <div className="flex justify-center items-center h-64">Loading tasks...</div>
         ) : (
           <div className="mt-4">
-            <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
-              <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                  <div className="flex flex-col gap-4">
-                      {filteredTasks.length > 0 ? filteredTasks.map(task => (
-                          <TaskCard 
-                              key={task.id} 
-                              task={task} 
-                              onEdit={() => { setSelectedTask(task); setIsEditOpen(true); }}
-                              onDelete={() => { setSelectedTask(task); setIsDeleteAlertOpen(true); }}
-                              onStatusChange={handleStatusChange}
-                          />
-                      )) : (
-                          <div className="text-center text-muted-foreground py-10">No tasks found for this filter.</div>
-                      )}
-                 </div>
-             </SortableContext>
-            </DndContext>
+            {filteredTasks.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredTasks.map(task => (
+                   <TaskCard key={task.id} task={task} onEdit={() => { setSelectedTask(task); setIsEditOpen(true); }} onDelete={() => { setSelectedTask(task); setIsDeleteAlertOpen(true); }} onStatusChange={handleStatusChange} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-16">
+                <p className="text-lg">No tasks found for "{activeStatus}".</p>
+                <p className="text-sm">Try adjusting your filters or creating a new task.</p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -406,27 +322,11 @@ export default function TasksPage() {
 
       {selectedTask && currentUser && (
         <>
-          <EditTaskForm 
-            isOpen={isEditOpen} 
-            onOpenChange={(isOpen) => { if (!isOpen) setSelectedTask(null); setIsEditOpen(isOpen); }} 
-            onEditTask={(id, data) => handleAddOrEditTask(data, id)}
-            onUpdateSubTasks={handleUpdateSubTasks}
-            onAddComment={handleAddComment}
-            employees={employees}
-            task={selectedTask}
-            tasks={tasks}
-            currentUser={currentUser}
-          />
+          <EditTaskForm isOpen={isEditOpen} onOpenChange={(isOpen) => { if (!isOpen) setSelectedTask(null); setIsEditOpen(isOpen); }} onEditTask={(id, data) => handleAddOrEditTask(data, id)} onUpdateSubTasks={handleUpdateSubTasks} onAddComment={handleAddComment} employees={employees} task={selectedTask} tasks={tasks} currentUser={currentUser} />
           <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
             <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>This will permanently delete the task "{selectedTask.title}".</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setSelectedTask(null)}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-              </AlertDialogFooter>
+              <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the task "{selectedTask.title}".</AlertDialogDescription></AlertDialogHeader>
+              <AlertDialogFooter><AlertDialogCancel onClick={() => setSelectedTask(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </>
