@@ -36,6 +36,7 @@ import {
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { TaskCard } from "@/components/task-card"
+import { Badge } from "@/components/ui/badge";
 
 export interface SubTask {
   id: string;
@@ -76,8 +77,6 @@ export interface Task {
 }
 
 const tasksCollectionRef = collection(db, "tasks");
-const subTasksCollectionRef = collection(db, "subTasks");
-const commentsCollectionRef = collection(db, "comments");
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -94,39 +93,58 @@ export default function TasksPage() {
   const fetchTasksAndEmployees = async () => {
     setIsLoading(true);
     try {
-      const [taskSnapshot, employeeSnapshot, subTasksSnapshot, commentsSnapshot] = await Promise.all([
+      const [taskSnapshot, employeeSnapshot] = await Promise.all([
         getDocs(tasksCollectionRef),
         getDocs(collection(db, "employees")),
-        getDocs(subTasksCollectionRef),
-        getDocs(commentsCollectionRef),
       ]);
 
       const employeeData = employeeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Employee[];
       setEmployees(employeeData);
       setCurrentUser(employeeData.find(e => e.id === "emp-1") || employeeData[0]); // Mock current user
 
-      const allSubTasks = subTasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as SubTask[];
-      const allComments = commentsSnapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id,
-        timestamp: (doc.data().timestamp as Timestamp).toDate(),
-      })) as Comment[];
-
-      const taskData = taskSnapshot.docs.map(doc => {
-        const data = doc.data();
+      const taskDataPromises = taskSnapshot.docs.map(async (taskDoc) => {
+        const data = taskDoc.data();
         const assignee = employeeData.find(e => e.id === data.assigneeId);
+
+        const subTasksCollectionRef = collection(db, "tasks", taskDoc.id, "subTasks");
+        const commentsCollectionRef = collection(db, "tasks", taskDoc.id, "comments");
+
+        const [subTasksSnapshot, commentsSnapshot] = await Promise.all([
+            getDocs(subTasksCollectionRef),
+            getDocs(commentsCollectionRef)
+        ]);
+
+        const subTasks = subTasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as SubTask[];
+
+        const comments = commentsSnapshot.docs.map(doc => {
+            const commentData = doc.data();
+            const timestamp = commentData.timestamp instanceof Timestamp
+                ? commentData.timestamp.toDate()
+                : new Date(); 
+            return {
+                ...commentData,
+                id: doc.id,
+                timestamp: timestamp,
+            } as Comment;
+        });
+
+        const dueDate = data.dueDate instanceof Timestamp
+            ? data.dueDate.toDate()
+            : null; 
+
         return {
-          ...data,
-          id: doc.id,
-          dueDate: data.dueDate ? (data.dueDate as Timestamp).toDate() : null,
-          assignee: assignee?.name || "Unassigned",
-          avatar: assignee?.avatar,
-          subTasks: allSubTasks.filter(st => st.parentId === doc.id),
-          comments: allComments.filter(c => c.parentId === doc.id).sort((a,b) => b.timestamp.getTime() - a.timestamp.getTime()),
-          dependsOn: data.dependsOn || [],
+            ...data,
+            id: taskDoc.id,
+            dueDate: dueDate,
+            assignee: assignee?.name || "Unassigned",
+            avatar: assignee?.avatar,
+            subTasks: subTasks,
+            comments: comments.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()),
+            dependsOn: data.dependsOn || [],
         } as Task;
       });
 
+      const taskData = await Promise.all(taskDataPromises);
       setTasks(taskData);
 
     } catch (error) {
@@ -175,26 +193,25 @@ export default function TasksPage() {
   const handleUpdateSubTasks = async (taskId: string, subTasksToUpdate: SubTask[]) => {
     try {
       const batch = writeBatch(db);
-      const existingSubTasksQuery = query(subTasksCollectionRef, where("parentId", "==", taskId));
-      const existingSubTasksSnapshot = await getDocs(existingSubTasksQuery);
+      const subTasksCollectionRef = collection(db, "tasks", taskId, "subTasks");
+      const existingSubTasksSnapshot = await getDocs(subTasksCollectionRef);
       const existingSubTaskIds = new Set(existingSubTasksSnapshot.docs.map(d => d.id));
 
       for (const subTask of subTasksToUpdate) {
         const subTaskRef = subTask.id.startsWith('temp-') 
           ? doc(subTasksCollectionRef) 
-          : doc(db, "subTasks", subTask.id);
+          : doc(subTasksCollectionRef, subTask.id);
 
         batch.set(subTaskRef, { ...subTask, parentId: taskId, id: subTaskRef.id });
         existingSubTaskIds.delete(subTask.id);
       }
 
-      // Delete subtasks that were removed
       existingSubTaskIds.forEach(idToDelete => {
-        batch.delete(doc(db, "subTasks", idToDelete));
+        batch.delete(doc(subTasksCollectionRef, idToDelete));
       });
 
       await batch.commit();
-      await fetchTasksAndEmployees(); // Refresh data
+      await fetchTasksAndEmployees();
     } catch (error) {
       console.error("Error updating sub-tasks: ", error);
     }
@@ -203,8 +220,8 @@ export default function TasksPage() {
   const handleAddComment = async (taskId: string, commentText: string, attachments: { name: string, url: string }[]) => {
     if (!currentUser) return;
     try {
+      const commentsCollectionRef = collection(db, "tasks", taskId, "comments");
       await addDoc(commentsCollectionRef, {
-        parentId: taskId,
         authorId: currentUser.id,
         authorName: currentUser.name,
         authorAvatar: currentUser.avatar,
@@ -212,7 +229,7 @@ export default function TasksPage() {
         timestamp: Timestamp.now(),
         attachments: attachments,
       });
-      await fetchTasksAndEmployees(); // Refresh data
+      await fetchTasksAndEmployees();
     } catch (error) {
       console.error("Error adding comment: ", error);
     }
@@ -222,7 +239,6 @@ export default function TasksPage() {
     if (!selectedTask) return;
     try {
       await deleteDoc(doc(db, "tasks", selectedTask.id));
-      // Also delete associated sub-tasks and comments if needed (cascade delete)
       await fetchTasksAndEmployees();
       setIsDeleteAlertOpen(false);
       setSelectedTask(null);
@@ -246,8 +262,6 @@ export default function TasksPage() {
     if (over && active.id !== over.id) {
         const oldIndex = tasks.findIndex(t => t.id === active.id);
         const newIndex = tasks.findIndex(t => t.id === over.id);
-        // Note: This only reorders on the client. For persistence, you'd need to save order.
-        // Not implemented here for brevity.
     }
   };
 
