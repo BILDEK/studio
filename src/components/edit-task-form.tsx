@@ -56,11 +56,11 @@ function SortableSubTaskItem({ item, index, onUpdate, onToggle, onRemove }: Sort
       <span {...listeners} className="cursor-move">
         <GripVertical className="h-5 w-5 text-muted-foreground" />
       </span>
-      <Input
+      <input
         type="checkbox"
         checked={item.completed}
         onChange={() => onToggle(index)}
-        className="h-5 w-5 accent-primary"
+        className="h-5 w-5 accent-primary cursor-pointer"
       />
       <Input
         value={item.text}
@@ -260,7 +260,15 @@ export function EditTaskForm({ isOpen, onOpenChange, onEditTask, onUpdateSubTask
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent 
+        className="max-w-4xl"
+        onPointerDownOutside={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest('[data-cmdk-root]')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <ScrollArea className="max-h-[85vh]">
         <div className="pr-6 py-4">
         <DialogHeader>

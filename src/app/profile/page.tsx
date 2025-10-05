@@ -11,8 +11,8 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth"
-import { auth, db } from "@/lib/firebase" // Removed 'storage'
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore"
+import { auth, db } from "@/lib/firebase"
+import { collection, query, where, getDocs, updateDoc, doc, addDoc } from "firebase/firestore"
 
 import { AppLayout } from "@/components/app-layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -39,6 +39,7 @@ function AccountSettings() {
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [employeeDocId, setEmployeeDocId] = useState<string | null>(null)
@@ -51,38 +52,38 @@ function AccountSettings() {
         setEmail(currentUser.email || "")
 
         try {
-          const q = query(
-            collection(db, "employees"),
-            where("email", "==", currentUser.email)
-          )
-          const querySnapshot = await getDocs(q)
+          let q = query(collection(db, "employees"), where("email", "==", currentUser.email))
+          let querySnapshot = await getDocs(q)
 
           if (!querySnapshot.empty) {
             const userDoc = querySnapshot.docs[0]
             setEmployeeDocId(userDoc.id)
             setName(userDoc.data().name || "")
+            setAvatarUrl(userDoc.data().avatar)
           } else {
-             const test0q = query(
-              collection(db, "test0"),
-              where("email", "==", currentUser.email)
-            )
-            const test0querySnapshot = await getDocs(test0q)
-             if (!test0querySnapshot.empty) {
-                const userDoc = test0querySnapshot.docs[0]
-                setEmployeeDocId(userDoc.id)
-                setName(userDoc.data().name || "")
-             } else {
-                setName(currentUser.displayName || "")
-             }
+            q = query(collection(db, "test0"), where("email", "==", currentUser.email))
+            querySnapshot = await getDocs(q)
+
+            if (!querySnapshot.empty) {
+              const userDoc = querySnapshot.docs[0]
+              setEmployeeDocId(userDoc.id)
+              setName(userDoc.data().name || "")
+              setAvatarUrl(userDoc.data().avatar)
+            } else {
+              setName(currentUser.displayName || "")
+              setAvatarUrl(undefined)
+            }
           }
         } catch (error) {
-          console.error("Error fetching user name from Firestore:", error)
-          setName(currentUser.displayName || "") // Fallback on error
+          console.error("Error fetching user data from Firestore:", error)
+          setName(currentUser.displayName || "")
+          setAvatarUrl(undefined)
         }
       } else {
         setUser(null)
         setName("")
         setEmail("")
+        setAvatarUrl(undefined)
         setEmployeeDocId(null)
       }
     })
@@ -90,103 +91,124 @@ function AccountSettings() {
     return () => unsubscribe()
   }, [])
 
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file || !user) return
+  const resizeImage = (file: File, maxWidth: number, maxHeight: number): Promise<string> => {
+      return new Promise((resolve, reject) => {
+          const img = document.createElement("img");
+          const reader = new FileReader();
 
-    // Optional: Check file size to avoid huge base64 strings
-    if (file.size > 1024 * 1024) { // 1MB limit
-        toast({
-            variant: "destructive",
-            title: "File too large",
-            description: "Please select an image smaller than 1MB.",
-        });
-        return;
-    }
+          reader.onload = (e) => {
+              if (typeof e.target?.result !== 'string') {
+                  return reject(new Error('File could not be read.'));
+              }
+              img.src = e.target.result;
+          };
+          reader.onerror = reject;
 
-    setIsUploadingAvatar(true)
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onloadend = async () => {
-        try {
-            const dataUrl = reader.result as string
+          img.onload = () => {
+              const canvas = document.createElement("canvas");
+              let { width, height } = img;
 
-            // Update Firebase Auth profile
-            await updateProfile(user, { photoURL: dataUrl })
+              if (width > height) {
+                  if (width > maxWidth) {
+                      height = Math.round(height * (maxWidth / width));
+                      width = maxWidth;
+                  }
+              } else {
+                  if (height > maxHeight) {
+                      width = Math.round(width * (maxHeight / height));
+                      height = maxHeight;
+                  }
+              }
 
-            // Update Firestore document
-            if (employeeDocId) {
-                try {
-                    const userDocRef = doc(db, "employees", employeeDocId)
-                    await updateDoc(userDocRef, { avatar: dataUrl })
-                } catch (e) {
-                   try {
-                        const userDocRef = doc(db, "test0", employeeDocId);
-                        await updateDoc(userDocRef, { avatar: dataUrl });
-                    } catch(e2) {
-                        console.error("Could not find document to update avatar in either collection.");
-                    }
-                }
-            }
-            
-            // Force re-render to show new avatar
-            setUser({ ...user, photoURL: dataUrl })
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext("2d");
+              if (!ctx) {
+                  return reject(new Error('Could not get canvas context.'));
+              }
+              ctx.drawImage(img, 0, 0, width, height);
 
-            toast({ title: "Success", description: "Avatar updated successfully!" })
-        } catch (error) {
-            console.error("Error updating profile with new avatar:", error)
-            toast({ variant: "destructive", title: "Update Failed", description: "There was an error saving your new avatar." })
-        } finally {
-            setIsUploadingAvatar(false)
+              // Get the data URL with JPEG format for better compression
+              resolve(canvas.toDataURL("image/jpeg", 0.9)); // 0.9 is the quality level
+          };
+
+          reader.readAsDataURL(file);
+      });
+  };
+
+ const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    setIsUploadingAvatar(true);
+    try {
+        // Resize the image before processing
+        const dataUrl = await resizeImage(file, 800, 800);
+
+        if (employeeDocId) {
+            let docRef;
+             try {
+                 docRef = doc(db, "employees", employeeDocId);
+                 await getDoc(docRef);
+             } catch (e) {
+                 docRef = doc(db, "test0", employeeDocId);
+             }
+            await updateDoc(docRef, { avatar: dataUrl });
+        } else {
+            if (!user.email) throw new Error("User email not found");
+            const newDocRef = await addDoc(collection(db, "test0"), {
+                email: user.email,
+                name: name || user.displayName || "",
+                avatar: dataUrl,
+            });
+            setEmployeeDocId(newDocRef.id);
         }
+        
+        setAvatarUrl(dataUrl);
+        toast({ title: "Success", description: "Avatar updated successfully!" });
+    } catch (error) {
+        console.error("Error saving avatar:", error);
+        toast({ variant: "destructive", title: "Update Failed", description: `There was an error saving your new avatar: ${error}` });
+    } finally {
+        setIsUploadingAvatar(false);
     }
-    reader.onerror = () => {
-        console.error("Error reading file:", reader.error)
-        toast({ variant: "destructive", title: "Read Failed", description: "Could not read the selected file." })
-        setIsUploadingAvatar(false)
-    }
-  }
+};
 
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "You must be logged in to update your profile.",
-      })
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in to update your profile." })
       return
     }
 
     setIsSubmitting(true)
 
     try {
-      if (employeeDocId && name !== (user.displayName || "")) {
-        const userDocRef = doc(db, "employees", employeeDocId)
-        await updateDoc(userDocRef, { name: name })
+      if (name !== (user.displayName || "")) {
         await updateProfile(user, { displayName: name })
-        toast({
-          title: "Success",
-          description: "Your name has been updated.",
-        })
+         if (employeeDocId) {
+            const docRef = doc(db, "test0", employeeDocId)
+            await updateDoc(docRef, { name: name })
+        } else {
+             if (!user.email) throw new Error("User email not found");
+             const newDocRef = await addDoc(collection(db, "test0"), {
+                email: user.email,
+                name: name,
+            });
+            setEmployeeDocId(newDocRef.id);
+        }
+        toast({ title: "Success", description: "Your name has been updated." })
       }
 
       if (newPassword && currentPassword) {
         const credential = EmailAuthProvider.credential(user.email!, currentPassword)
         await reauthenticateWithCredential(user, credential)
         await updatePassword(user, newPassword)
-        toast({
-          title: "Success",
-          description: "Your password has been updated.",
-        })
+        toast({ title: "Success", description: "Your password has been updated." })
         setCurrentPassword("")
         setNewPassword("")
       } else if (newPassword && !currentPassword) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Please enter your current password to set a new one.",
-        })
+        toast({ variant: "destructive", title: "Error", description: "Please enter your current password to set a new one." })
       }
     } catch (error: any) {
       let errorMessage = "An unexpected error occurred."
@@ -195,11 +217,7 @@ function AccountSettings() {
       } else if (error.code === "auth/weak-password") {
         errorMessage = "The new password is too weak."
       }
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: errorMessage,
-      })
+      toast({ variant: "destructive", title: "Update Failed", description: errorMessage })
     } finally {
       setIsSubmitting(false)
     }
@@ -221,10 +239,10 @@ function AccountSettings() {
       <CardContent>
         <div className="flex flex-col items-center gap-4 sm:flex-row">
           <Avatar className="h-24 w-24">
-            <AvatarImage src={user?.photoURL || undefined} alt="@user" />
+            <AvatarImage src={avatarUrl} alt="@user" />
             <AvatarFallback>{getInitials(name)}</AvatarFallback>
           </Avatar>
-           <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/*" style={{ display: "none" }} />
+           <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/jpeg, image/png" style={{ display: "none" }} />
           <div className="flex-1 text-center sm:text-left">
             <h2 className="text-xl font-bold">{name || "No Name"}</h2>
             <p className="text-muted-foreground">{user?.email}</p>
