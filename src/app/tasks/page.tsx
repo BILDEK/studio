@@ -96,7 +96,7 @@ export default function TasksPage() {
         return {
           ...data,
           id: doc.id,
-          dueDate: (data.dueDate as Timestamp).toDate(),
+            dueDate: (data.dueDate as Timestamp).toDate(),
           assignee: assignee?.name || data.assignee,
           avatar: assignee?.avatar || data.avatar,
           dependsOn: data.dependsOn || [],
