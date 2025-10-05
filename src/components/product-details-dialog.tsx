@@ -4,7 +4,6 @@
 import * as React from "react"
 import Image from "next/image"
 import type { Product } from "@/app/inventory/page"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,26 +18,15 @@ interface ProductDetailsDialogProps {
   product: Product
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
+  getStatusBadge: (status: Product["status"]) => React.ReactNode
 }
 
 export function ProductDetailsDialog({
   product,
   isOpen,
   onOpenChange,
+  getStatusBadge,
 }: ProductDetailsDialogProps) {
-  const getStatusBadge = (status: string) => {
-    // Badge logic remains the same
-     switch (status) {
-      case "In Stock":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">{status}</Badge>
-      case "Low Stock":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">{status}</Badge>
-      case "Out of Stock":
-        return <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">{status}</Badge>
-      default:
-        return <Badge variant="secondary">{status}</Badge>
-    }
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>

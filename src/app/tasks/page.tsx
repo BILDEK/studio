@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch, Timestamp, query, orderBy, collectionGroup } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { sampleTasks } from "@/lib/sample-data";
 
 import { AppLayout } from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,16 +13,14 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, Filter, X, Link as LinkIcon, MessageSquare } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, X, Link as LinkIcon, MessageSquare } from "lucide-react";
 import { AddTaskForm, TaskFormValues } from "@/components/add-task-form";
 import { EditTaskForm } from "@/components/edit-task-form";
 import type { Employee } from "@/app/employees/page";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { SubTaskList } from "@/components/sub-task-list";
-import { Separator } from "@/components/ui/separator";
-import type { Comment } from "@/components/task-comments";
+import { type Comment, type Attachment } from "@/components/task-comments";
 
 export type TaskStatus = "todo" | "inProgress" | "done";
 
@@ -69,13 +66,12 @@ export default function TasksPage() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   
+  const [activeTab, setActiveTab] = useState<TaskStatus>("todo");
   const [searchText, setSearchText] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState("all");
-  const [dueDateFilter, setDueDateFilter] = useState("all");
 
-  // Mock current user - in a real app, this would come from an auth context
-  const currentUser = useMemo(() => employees[0], [employees]);
+  const currentUser = useMemo(() => employees.find(e => e.id === 'user-johndoe') || employees[0], [employees]);
 
   const fetchTasksAndEmployees = async () => {
     setIsLoading(true);
@@ -85,12 +81,7 @@ export default function TasksPage() {
       setEmployees(employeesData);
 
       const taskSnapshot = await getDocs(query(tasksCollectionRef, orderBy("dueDate", "desc")));
-      if (taskSnapshot.empty && employeesData.length > 0) {
-        // Population logic remains the same
-        await fetchTasksAndEmployees(); return;
-      }
-
-      // Efficiently fetch all sub-collections
+      
       const [subTasksSnapshot, commentsSnapshot] = await Promise.all([
         getDocs(query(collectionGroup(db, 'subTasks'))),
         getDocs(query(collectionGroup(db, 'comments')))
@@ -110,7 +101,7 @@ export default function TasksPage() {
           avatar: assignee?.avatar || data.avatar,
           dependsOn: data.dependsOn || [],
           subTasks: allSubTasks.filter(st => st.parentId === doc.id) || [],
-          comments: allComments.filter(c => c.parentId === doc.id) || [],
+          comments: allComments.filter(c => c.parentId === doc.id).sort((a,b) => b.timestamp.getTime() - a.timestamp.getTime()) || [],
         } as Task;
       });
       setTasks(tasksData);
@@ -122,7 +113,7 @@ export default function TasksPage() {
   };
 
   useEffect(() => { fetchTasksAndEmployees(); }, []);
-
+  
   const handleAddTask = async (taskData: TaskFormValues) => {
     const assignee = employees.find((e) => e.id === taskData.assigneeId);
     if (!assignee) return;
@@ -150,15 +141,15 @@ export default function TasksPage() {
         const subTasksRef = collection(db, "tasks", taskId, "subTasks");
         const batch = writeBatch(db);
         const snapshot = await getDocs(subTasksRef);
-        snapshot.docs.forEach(doc => batch.delete(doc.ref)); // Clear existing
-        newSubTasks.forEach(st => batch.set(doc(subTasksRef, st.id), st)); // Add new
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        newSubTasks.forEach(st => batch.set(doc(subTasksRef, st.id), st));
         await batch.commit();
         const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, subTasks: newSubTasks } : t);
         setTasks(updatedTasks);
     } catch (error) { console.error("Error updating sub-tasks:", error); }
   };
 
-  const handleAddComment = async (taskId: string, commentText: string) => {
+ const handleAddComment = async (taskId: string, commentText: string, attachments: Attachment[]) => {
     if (!currentUser) { console.error("No user logged in"); return; }
     try {
       const commentRef = collection(db, "tasks", taskId, "comments");
@@ -167,9 +158,10 @@ export default function TasksPage() {
         authorAvatar: currentUser.avatar,
         text: commentText,
         timestamp: Timestamp.now(),
+        attachments: attachments,
       }
       await addDoc(commentRef, newComment);
-      fetchTasksAndEmployees(); // Refetch to get the new comment with ID and timestamp
+      fetchTasksAndEmployees();
     } catch (error) {
       console.error("Error adding comment:", error);
     }
@@ -182,7 +174,8 @@ export default function TasksPage() {
       await updateDoc(doc(db, "tasks", taskId), { status });
       const assignee = employees.find(e => e.id === task.assigneeId);
       if (assignee) await createTaskStatusChangedNotification(assignee.email, assignee.name, task.title, status);
-      fetchTasksAndEmployees();
+      setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? { ...t, status } : t));
+      setActiveTab(status);
     } catch (error) { console.error("Error updating status:", error); }
   };
 
@@ -196,14 +189,16 @@ export default function TasksPage() {
     } catch (error) { console.error("Error deleting task:", error); }
   };
 
-  const filterTasks = (tasks: Task[], status: TaskStatus) => {
-    let filtered = tasks.filter(t => t.status === status);
-    // Filtering logic remains the same
-    return filtered;
-  };
-
-  const clearAllFilters = () => { /* ... */ };
-  const hasActiveFilters = () => { /* ... */ };
+ const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+        if (!task || !task.title || !task.status) return false;
+        const matchesSearch = task.title.toLowerCase().includes(searchText.toLowerCase()) ||
+                              (task.description && task.description.toLowerCase().includes(searchText.toLowerCase()));
+        const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+        const matchesAssignee = assigneeFilter === 'all' || task.assigneeId === assigneeFilter;
+        return matchesSearch && matchesPriority && matchesAssignee;
+    });
+  }, [tasks, searchText, priorityFilter, assigneeFilter]);
 
   const TaskCard = ({ task }: { task: Task }) => {
     const dependencies = task.dependsOn?.map(id => tasks.find(t => t.id === id)).filter(Boolean) as Task[] || [];
@@ -215,7 +210,7 @@ export default function TasksPage() {
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between">
             <CardTitle className={`text-base font-medium leading-tight ${isBlocked ? 'text-muted-foreground' : ''}`}>
-              {isBlocked && <TooltipProvider><Tooltip><TooltipTrigger asChild><LinkIcon className="h-4 w-4 mr-2 inline-block" /></TooltipTrigger><TooltipContent><p>Blocked</p></TooltipContent></Tooltip></TooltipProvider>}
+              {isBlocked && <TooltipProvider><Tooltip><TooltipTrigger asChild><LinkIcon className="h-4 w-4 mr-2 inline-block" /></TooltipTrigger><TooltipContent><p>Blocked by: {dependencies.map(d => d.title).join(', ')}</p></TooltipContent></Tooltip></TooltipProvider>}
               {task.title}
             </CardTitle>
             <DropdownMenu>
@@ -223,11 +218,11 @@ export default function TasksPage() {
               <DropdownMenuContent align="end">
                  <DropdownMenuItem onSelect={() => { setSelectedTask(task); setIsEditOpen(true); }}><Edit className="mr-2 h-4 w-4" /> View Details / Edit</DropdownMenuItem>
                  <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={isBlocked}>Move to</DropdownMenuSubTrigger>
+                  <DropdownMenuSubTrigger>Move to</DropdownMenuSubTrigger>
                   <DropdownMenuPortal><DropdownMenuSubContent>
-                    <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, "todo")}>To Do</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, "inProgress")}>In Progress</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, "done")}>Done</DropdownMenuItem>
+                    <DropdownMenuItem disabled={task.status === 'todo'} onClick={() => handleUpdateStatus(task.id, "todo")}>To Do</DropdownMenuItem>
+                    <DropdownMenuItem disabled={task.status === 'inProgress'} onClick={() => handleUpdateStatus(task.id, "inProgress")}>In Progress</DropdownMenuItem>
+                    <DropdownMenuItem disabled={task.status === 'done'} onClick={() => handleUpdateStatus(task.id, "done")}>Done</DropdownMenuItem>
                   </DropdownMenuSubContent></DropdownMenuPortal>
                 </DropdownMenuSub>
                 <DropdownMenuSeparator />
@@ -237,10 +232,10 @@ export default function TasksPage() {
           </div>
         </CardHeader>
         <CardContent className="py-2 flex-grow">
-          {task.description && <CardDescription className="text-sm mb-3 text-foreground/80">{task.description}</CardDescription>}
+          {task.description && <CardDescription className="text-sm mb-3 text-foreground/80 line-clamp-2">{task.description}</CardDescription>}
           {dependencies.length > 0 && (
             <div className="mb-3"><h4 className="text-xs font-semibold text-muted-foreground mb-1">Dependencies</h4><div className="flex flex-wrap gap-1">
-              {dependencies.map(dep => <TooltipProvider key={dep.id}><Tooltip><TooltipTrigger asChild><Badge variant={dep.status === 'done' ? 'secondary' : 'destructive'}>{dep.title}</Badge></TooltipTrigger><TooltipContent><p>Status: {dep.status}</p></TooltipContent></Tooltip></TooltipProvider>)}
+              {dependencies.map(dep => <TooltipProvider key={dep.id}><Tooltip><TooltipTrigger asChild><Badge variant={dep.status === 'done' ? 'secondary' : 'destructive'} className="cursor-default">{dep.title}</Badge></TooltipTrigger><TooltipContent><p>Status: {dep.status}</p></TooltipContent></Tooltip></TooltipProvider>)}
             </div></div>
           )}
           <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -264,16 +259,17 @@ export default function TasksPage() {
     );
   }
 
-  const renderTaskColumn = (status: TaskStatus, title: string) => {
-    const filteredTasks = filterTasks(tasks, status);
+  const renderTaskColumn = (status: TaskStatus) => {
+    const tasksToDisplay = filteredTasks.filter(task => task.status === status);
+
     return (
-      <TabsContent value={status} className="mt-4">
-        {isLoading ? <div className="text-center p-8">Loading...</div> : filteredTasks.length > 0 ? (
+      <TabsContent value={status} className="mt-0">
+        {isLoading ? <div className="text-center p-8">Loading...</div> : tasksToDisplay.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredTasks.map((task) => <TaskCard key={task.id} task={task} />)}
+            {tasksToDisplay.map((task) => <TaskCard key={task.id} task={task} />)}
           </div>
         ) : (
-          <div className="text-center text-muted-foreground p-8">No tasks.</div>
+          <div className="text-center text-muted-foreground p-8">No tasks found for the current filters.</div>
         )}
       </TabsContent>
     );
@@ -283,14 +279,30 @@ export default function TasksPage() {
     <AppLayout>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Tasks</h1><Button onClick={() => setIsAddOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Task</Button></div>
-        {/* Filters Card */}
-        <Tabs defaultValue="todo" className="w-full">
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="relative flex-grow">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search tasks..." className="w-full pl-8" value={searchText} onChange={e => setSearchText(e.target.value)} />
+              </div>
+              <div className="flex-grow sm:flex-grow-0"><Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Priority" /></SelectTrigger><SelectContent><SelectItem value="all">All Priorities</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="Low">Low</SelectItem></SelectContent></Select></div>
+              <div className="flex-grow sm:flex-grow-0"><Select value={assigneeFilter} onValueChange={setAssigneeFilter}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Assignee" /></SelectTrigger><SelectContent><SelectItem value="all">All Assignees</SelectItem>{employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent></Select></div>
+              {(searchText !== "" || priorityFilter !== "all" || assigneeFilter !== "all") && <Button variant="ghost" onClick={() => { setSearchText(""); setPriorityFilter("all"); setAssigneeFilter("all"); }}><X className="mr-2 h-4 w-4" />Clear Filters</Button>}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TaskStatus)} className="w-full">
           <TabsList className="grid w-full grid-cols-3"><TabsTrigger value="todo">To Do</TabsTrigger><TabsTrigger value="inProgress">In Progress</TabsTrigger><TabsTrigger value="done">Done</TabsTrigger></TabsList>
-          <TooltipProvider>
-            {renderTaskColumn("todo", "To Do")}
-            {renderTaskColumn("inProgress", "In Progress")}
-            {renderTaskColumn("done", "Done")}
-          </TooltipProvider>
+          <div className="pt-4">
+            <TooltipProvider>
+                {renderTaskColumn("todo")}
+                {renderTaskColumn("inProgress")}
+                {renderTaskColumn("done")}
+            </TooltipProvider>
+          </div>
         </Tabs>
       </div>
 
@@ -300,7 +312,7 @@ export default function TasksPage() {
         <>
           <EditTaskForm isOpen={isEditOpen} onOpenChange={setIsEditOpen} onEditTask={handleEditTask} onUpdateSubTasks={handleUpdateSubTasks} onAddComment={handleAddComment} employees={employees} task={selectedTask} tasks={tasks} currentUser={currentUser} />
           <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete "{selectedTask.title}".</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteTask} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-        </>
+        </> 
       )}
     </AppLayout>
   );
